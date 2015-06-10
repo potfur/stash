@@ -78,10 +78,9 @@ Connection to database:
 ```php
 $connection = new Connection(
     new MongoClient(),
-    'test',
     new DocumentConverter(new Converter(), $models),
-    $models
 );
+$connection->selectDB('test');
 ```
 
 Creating entity and how to store it:

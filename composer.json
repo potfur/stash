@@ -1,0 +1,40 @@
+{
+  "name": "potfur/stash",
+  "version": "v0.2.1",
+  "description": "Stash: Mongo ODM",
+  "keywords": [
+    "document",
+    "database",
+    "persistence",
+    "mongo",
+    "odm"
+  ],
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Michal Wachowski",
+      "email": "wachowski.michal@gmail.com"
+    }
+  ],
+  "require": {
+    "php": ">=5.4",
+    "ext-mongo": "*"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "~4.6",
+    "phpmd/phpmd": "~2.2",
+    "squizlabs/php_codesniffer": "~2.3"
+  },
+  "config": {
+    "bin-dir": "bin"
+  },
+  "autoload": {
+    "psr-4": {"Stash\\": "./src/Stash"}
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Fake\\": "./tests/Fake",
+      "Stash\\": "./tests/integration/Stash"
+    }
+  }
+}
