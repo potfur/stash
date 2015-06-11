@@ -162,10 +162,10 @@ $order = new Order(
 $connection->getCollection('order')->save($order);
 ```
 
-And this is stored BSON representation.
+And this is stored MongoDB semi-JSON representation.
 When saving objects - entities **Stash** adds `_class` field, where it stores class name
 
-```json
+```
 {
   "_id" : ObjectId("55746f4f87dee7bc0b000033"),
   "_class" : "Order",
