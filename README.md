@@ -8,8 +8,9 @@ The small, but important, difference here is that instead of returning plain arr
 
 ## Future Roadmap
 
+ - references - *done*
+ - store datetime as UTC
  - event dispatcher
- - references
  
 ## Example
 

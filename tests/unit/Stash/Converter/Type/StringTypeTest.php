@@ -13,6 +13,12 @@ namespace Stash\Converter\Type;
 
 class StringTypeTest extends \PHPUnit_Framework_TestCase
 {
+    public function testType()
+    {
+        $type = new StringType();
+        $this->assertEquals('string', $type->getType());
+    }
+
     /**
      * @dataProvider valueProvider
      */

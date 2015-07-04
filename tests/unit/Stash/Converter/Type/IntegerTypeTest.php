@@ -13,6 +13,12 @@ namespace Stash\Converter\Type;
 
 class IntegerTypeTest extends \PHPUnit_Framework_TestCase
 {
+    public function testType()
+    {
+        $type = new IntegerType();
+        $this->assertEquals('integer', $type->getType());
+    }
+
     /**
      * @dataProvider valueProvider
      */

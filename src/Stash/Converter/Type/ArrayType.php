@@ -12,6 +12,7 @@
 namespace Stash\Converter\Type;
 
 use Stash\Converter\TypeInterface;
+use Stash\Fields;
 
 /**
  * Numeric and associative array converter
@@ -21,6 +22,16 @@ use Stash\Converter\TypeInterface;
  */
 final class ArrayType implements TypeInterface
 {
+    /**
+     * Return type name
+     *
+     * @return string
+     */
+    public function getType()
+    {
+        return Fields::TYPE_ARRAY;
+    }
+
     /**
      * Convert a value from its PHP representation.
      *

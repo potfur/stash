@@ -41,12 +41,17 @@ namespace Stash;
  *
  * @package Stash
  */
-final class Collection
+class Collection
 {
     /**
      * @var \MongoCollection
      */
     private $collection;
+
+    /**
+     * @var ModelCollection
+     */
+    private $models;
 
     /**
      * @var DocumentConverterInterface
@@ -57,11 +62,13 @@ final class Collection
      * Constructor
      *
      * @param \MongoCollection           $collection
+     * @param ModelCollection            $models
      * @param DocumentConverterInterface $converter
      */
-    public function __construct(\MongoCollection $collection, DocumentConverterInterface $converter)
+    public function __construct(\MongoCollection $collection, ModelCollection $models, DocumentConverterInterface $converter)
     {
         $this->collection = $collection;
+        $this->models = $models;
         $this->converter = $converter;
     }
 
@@ -103,12 +110,20 @@ final class Collection
      * @param array|object $document
      *
      * @return array
+     * @throws InvalidEntityException
      */
     private function convertDocument($document)
     {
-        if (is_object($document)) {
-            $document = $this->converter->convertToDatabaseValue($document);
+        if (!is_object($document)) {
+            return $document;
         }
+
+        $model = $this->models->getByInstance($document);
+        if ($model->getCollection() !== $this->getName()) {
+            throw new InvalidEntityException(sprintf('Entity of "%s" can not be saved in "%s"', $model->getClass(), $this->getName()));
+        }
+
+        $document = $this->converter->convertToDatabaseValue($document);
 
         return $document;
     }
@@ -153,15 +168,31 @@ final class Collection
      *
      * @param array $query
      * @param array $fields
+     * @param array $options
      *
      * @return null|object
      */
-    public function findOne(array $query = [], array $fields = [])
+    public function findOne(array $query = [], array $fields = [], array $options = [])
     {
-        $result = $this->collection->findOne($query, $fields);
+        $result = $this->collection->findOne($query, $fields, $options);
 
         return $this->converter->convertToPHPValue($result);
     }
+
+    /**
+     * Query collection for entity with set id
+     *
+     * @param mixed $id
+     * @param array $options
+     *
+     * @return null|object
+     */
+    public function findById($id, array $options = [])
+    {
+        return $this->findOne([Fields::KEY_ID => $id], [], $options);
+    }
+
+    // TODO - add getById
 
     /**
      * Update a document and return it
@@ -225,7 +256,7 @@ final class Collection
      *
      * @param object $entity
      *
-     * @return \MongoId
+     * @return mixed
      * @throws InvalidEntityException
      */
     private function getIdentifier($entity)

@@ -65,4 +65,10 @@ class ModelTest extends \PHPUnit_Framework_TestCase
         $model = new Model('\stdClass');
         $this->assertEquals('stdClass', $model->getClass());
     }
+
+    public function testCollection()
+    {
+        $model = new Model('\stdClass', [], 'stdclass');
+        $this->assertEquals('stdclass', $model->getCollection());
+    }
 }

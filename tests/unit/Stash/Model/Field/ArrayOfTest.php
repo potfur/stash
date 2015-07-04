@@ -42,7 +42,7 @@ class ArrayOfTest extends \PHPUnit_Framework_TestCase
             [Fields::TYPE_ID],
             [Fields::TYPE_BOOLEAN],
             [Fields::TYPE_INTEGER],
-            [Fields::TYPE_DOUBLE],
+            [Fields::TYPE_DECIMAL],
             [Fields::TYPE_STRING],
             [Fields::TYPE_DATE],
             [Fields::TYPE_ARRAY],

@@ -24,9 +24,10 @@ final class Fields
     const TYPE_ID = 'id';
     const TYPE_BOOLEAN = 'boolean';
     const TYPE_INTEGER = 'integer';
-    const TYPE_DOUBLE = 'decimal';
+    const TYPE_DECIMAL = 'decimal';
     const TYPE_STRING = 'string';
     const TYPE_DATE = 'date';
     const TYPE_ARRAY = 'array';
     const TYPE_DOCUMENT = 'document';
+    const TYPE_REFERENCE = 'reference';
 }

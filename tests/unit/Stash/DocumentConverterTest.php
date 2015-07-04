@@ -11,334 +11,231 @@
 
 namespace Stash;
 
-use Fake\Bar;
 use Fake\Foo;
-use Fake\Yada;
+use Stash\Model\Field\ArrayOf;
+use Stash\Model\Field\Document;
+use Stash\Model\Field\Id;
+use Stash\Model\Field\Reference;
+use Stash\Model\Field\Scalar;
+use Stash\Model\Model;
 
-class Fake
-{
-    public $foo;
-}
 
 class DocumentConverterTest extends \PHPUnit_Framework_TestCase
 {
-    /**
-     * @var ModelCollection
-     */
-    private $models;
-
     /**
      * @var ConverterInterface|\PHPUnit_Framework_MockObject_MockObject
      */
     private $converter;
 
-    public function setUp()
-    {
-        $this->models = new ModelCollection();
-        $this->models->register(
-            $this->buildModel(
-                '\Fake\Foo',
-                [
-                    '_id' => Fields::TYPE_ID,
-                    'int' => Fields::TYPE_INTEGER,
-                    'str' => Fields::TYPE_STRING,
-                    'bool' => Fields::TYPE_BOOLEAN,
-                    'date' => Fields::TYPE_DATE,
-                    'array' => Fields::TYPE_INTEGER . '[]',
-                    'yadas' => Fields::TYPE_DOCUMENT . '[]',
-                    'object' => Fields::TYPE_DOCUMENT,
-                    'missing' => Fields::TYPE_STRING // for testing undefined properties
-                ]
-            )
-        );
-
-        $this->models->register(
-            $this->buildModel(
-                '\Fake\Bar',
-                [
-                    'foo' => Fields::TYPE_STRING,
-                    'bar' => Fields::TYPE_STRING
-                ]
-            )
-        );
-
-        $this->models->register(
-            $this->buildModel(
-                '\Fake\Yada',
-                [
-                    'yada' => Fields::TYPE_STRING
-                ]
-            )
-        );
-
-        $this->converter = $this->getMock('\Stash\ConverterInterface');
-    }
+    /**
+     * @var ReferenceResolverInterface|\PHPUnit_Framework_MockObject_MockObject
+     */
+    private $referencer;
 
     /**
-     * @param string $class
-     * @param array  $fields
-     *
-     * @return ModelInterface|\PHPUnit_Framework_MockObject_MockObject
+     * @var ModelCollection
      */
-    private function buildModel($class, array $fields)
+    private $models;
+
+    public function setUp()
     {
-        $map = [];
-        foreach ($fields as $name => $type) {
-            $fieldMock = $this->getMock('\Stash\FieldInterface', ['getName', 'getType', 'getElementType']);
-            $fieldMock->expects($this->any())->method('getName')->willReturn($name);
-            $fieldMock->expects($this->any())->method('getType')->willReturn(strpos($type, '[]') !== false ? Fields::TYPE_ARRAY : trim($type, '[]'));
-            $fieldMock->expects($this->any())->method('getElementType')->willReturn(trim($type, '[]'));
-
-            $fields[$name] = $fieldMock;
-            $map[] = [$name, $fieldMock];
-        }
-
-        $model = $this->getMock('\Stash\ModelInterface');
-        $model->expects($this->any())->method('getClass')->willReturn(trim($class, '\\'));
-        $model->expects($this->any())->method('hasField')->willReturnCallback(function ($name) use ($fields) { return isset($fields[$name]); });
-        $model->expects($this->any())->method('getField')->willReturnMap($map);
-
-        return $model;
+        $this->converter = $this->getMock('\Stash\ConverterInterface');
+        $this->referencer = $this->getMock('\Stash\ReferenceResolverInterface');
+        $this->models = new ModelCollection();
     }
 
-    public function testConvertToDatabaseValue()
+    public function testConnect()
     {
-        $id = new \MongoId();
-        $date = new \DateTime();
+        $connection = $this->getMockBuilder('\Stash\Connection')->disableOriginalConstructor()->getMock();
 
-        $data = [
-            '_id' => $id,
-            '_class' => 'Fake\Foo',
-            'int' => null,
-            'str' => 'foo',
-            'bool' => true,
-            'date' => $date,
-            'array' => ['foo' => 1, 'bar' => 2],
-            'yadas' => [
-                'foo' => new Yada(['yada' => '1']),
-                'bar' => new Yada(['yada' => '2'])
-            ],
-            'object' => new Bar(['foo' => 'foo', 'bar' => 'bar'])
-        ];
-        $entity = new Foo($data);
+        $this->referencer->expects($this->once())->method('connect')->with($connection);
 
-        $document = [
-            '_id' => $id,
-            '_class' => 'Fake\Foo',
-            'str' => 'foo',
-            'bool' => true,
-            'date' => new \MongoDate($date->getTimestamp()),
-            'array' => ['foo' => 1, 'bar' => 2],
-            'yadas' => [
-                'foo' => [
-                    '_class' => 'Fake\Yada',
-                    'yada' => '1'
-                ],
-                'bar' => [
-                    '_class' => 'Fake\Yada',
-                    'yada' => '2'
-                ]
-            ],
-            'object' => [
-                '_class' => 'Fake\Bar',
-                'foo' => 'foo',
-                'bar' => 'bar'
-            ]
-        ];
+        $converter = new DocumentConverter($this->converter, $this->referencer, $this->models);
+        $converter->connect($connection);
+    }
 
-        $this->converter->expects($this->any())->method('convertToDatabaseValue')->willReturnMap(
+    public function testConvertEntityWithSimpleToDatabaseValue()
+    {
+        $entity = new Foo(null, 'foo');
+        $model = new Model('\Fake\Foo', [new Id(), new Scalar('field', Fields::TYPE_STRING)]);
+        $this->models->register($model);
+
+        $this->converter->expects($this->exactly(2))->method('convertToDatabaseValue')->willReturnMap(
             [
-                [$entity, Fields::TYPE_DOCUMENT, $data],
-                [$id, Fields::TYPE_ID, $id],
-                [1, Fields::TYPE_INTEGER, 1],
-                ['foo', Fields::TYPE_INTEGER, 'foo'],
-                [true, Fields::TYPE_BOOLEAN, true],
-                [$data['date'], Fields::TYPE_DATE, $document['date']],
-
-                [$data['array'], Fields::TYPE_ARRAY, $document['array']],
-                [1, Fields::TYPE_INTEGER, 1],
-                [2, Fields::TYPE_INTEGER, 2],
-
-                [$data['yadas'], Fields::TYPE_ARRAY, $data['yadas']],
-
-                [$data['yadas']['foo'], Fields::TYPE_DOCUMENT, $document['yadas']['foo']],
-                ['1', Fields::TYPE_STRING, '1'],
-
-                [$data['yadas']['bar'], Fields::TYPE_DOCUMENT, $document['yadas']['bar']],
-                ['2', Fields::TYPE_STRING, '2'],
-
-                [$data['object'], Fields::TYPE_DOCUMENT, $document['object']],
-                ['foo', Fields::TYPE_STRING, 'foo'],
-                ['bar', Fields::TYPE_STRING, 'bar']
+                [$entity, Fields::TYPE_DOCUMENT, ['_class' => 'Fake\Foo', 'field' => 'foo']],
+                ['foo', Fields::TYPE_STRING, 'foo']
             ]
         );
 
-        $converter = new DocumentConverter($this->converter, $this->models);
+        $converter = new DocumentConverter($this->converter, $this->referencer, $this->models);
         $result = $converter->convertToDatabaseValue($entity);
 
-        $this->assertEquals($document, $result);
+        $this->assertEquals(['_class' => 'Fake\Foo', 'field' => 'foo'], $result);
+    }
+
+    public function testConvertEntityWithArrayToDatabaseValue()
+    {
+        $entity = new Foo(null, [1]);
+        $model = new Model('\Fake\Foo', [new Id(), new ArrayOf('field', Fields::TYPE_INTEGER)]);
+        $this->models->register($model);
+
+        $this->converter->expects($this->exactly(3))->method('convertToDatabaseValue')->willReturnMap(
+            [
+                [$entity, Fields::TYPE_DOCUMENT, ['_class' => 'Fake\Foo', 'field' => [1]]],
+                [[1], Fields::TYPE_ARRAY, [1]],
+                [1, Fields::TYPE_INTEGER, '1'],
+            ]
+        );
+
+        $converter = new DocumentConverter($this->converter, $this->referencer, $this->models);
+        $result = $converter->convertToDatabaseValue($entity);
+
+        $this->assertEquals(['_class' => 'Fake\Foo', 'field' => ['1']], $result);
+    }
+
+    public function testConvertEntityWithSubDocumentToDatabaseValue()
+    {
+        $subEntity = new \stdClass();
+        $entity = new Foo(null, $subEntity);
+        $model = new Model('\Fake\Foo', [new Id(), new Document('field')]);
+        $this->models->register($model);
+
+        $model = new Model('\stdClass', []);
+        $this->models->register($model);
+
+        $this->converter->expects($this->exactly(2))->method('convertToDatabaseValue')->willReturnMap(
+            [
+                [$entity, Fields::TYPE_DOCUMENT, ['_class' => 'Fake\Foo', 'field' => $subEntity]],
+                [$subEntity, Fields::TYPE_DOCUMENT, ['_class' => 'stdClass']],
+            ]
+        );
+
+        $converter = new DocumentConverter($this->converter, $this->referencer, $this->models);
+        $result = $converter->convertToDatabaseValue($entity);
+
+        $this->assertEquals(['_class' => 'Fake\Foo', 'field' => ['_class' => 'stdClass']], $result);
+    }
+
+    public function testConvertEntityWithReferenceToDatabaseValue()
+    {
+        $entity = new Foo(null, null);
+        $model = new Model('\Fake\Foo', [new Id(), new Reference('field')]);
+        $this->models->register($model);
+
+        $this->converter->expects($this->once())->method('convertToDatabaseValue')->willReturnMap(
+            [
+                [$entity, Fields::TYPE_DOCUMENT, ['_class' => 'Fake\Foo', 'field' => null]]
+            ]
+        );
+
+        $this->referencer->expects($this->once())->method('store')->willReturn(null);
+
+        $converter = new DocumentConverter($this->converter, $this->referencer, $this->models);
+        $result = $converter->convertToDatabaseValue($entity);
+
+        $this->assertEquals(['_class' => 'Fake\Foo'], $result);
     }
 
     public function testConvertToPHPValue()
     {
-        $id = new \MongoId();
-        $date = new \DateTime();
+        $entity = new Foo(null, 'foo');
+        $model = new Model('\Fake\Foo', [new Id(), new Scalar('field', Fields::TYPE_STRING)]);
+        $this->models->register($model);
 
-        $data = [
-            '_id' => $id,
-            '_class' => 'Fake\Foo',
-            'str' => 'foo',
-            'bool' => true,
-            'date' => $date,
-            'array' => ['foo' => 1, 'bar' => 2],
-            'yadas' => [
-                'foo' => new Yada(['yada' => '1']),
-                'bar' => new Yada(['yada' => '2'])
-            ],
-            'object' => new Bar(['foo' => 'foo', 'bar' => 'bar'])
-        ];
-        $entity = new Foo($data);
-
-        $document = [
-            '_id' => $id,
-            '_class' => 'Fake\Foo',
-            'str' => 'foo',
-            'bool' => true,
-            'date' => new \MongoDate($date->getTimestamp()),
-            'array' => ['foo' => 1, 'bar' => 2],
-            'yadas' => [
-                'foo' => [
-                    '_class' => 'Fake\Yada',
-                    'yada' => '1'
-                ],
-                'bar' => [
-                    '_class' => 'Fake\Yada',
-                    'yada' => '2'
-                ]
-            ],
-            'object' => [
-                '_class' => 'Fake\Bar',
-                'foo' => 'foo',
-                'bar' => 'bar'
-            ]
-        ];
-
-        $this->converter->expects($this->any())->method('convertToPHPValue')->willReturnMap(
+        $this->converter->expects($this->exactly(2))->method('convertToPHPValue')->willReturnMap(
             [
-                [$data, Fields::TYPE_DOCUMENT, $entity],
-                [$id, Fields::TYPE_ID, $id],
-                [1, Fields::TYPE_INTEGER, 1],
-                ['foo', Fields::TYPE_INTEGER, 'foo'],
-                [true, Fields::TYPE_BOOLEAN, true],
-                [$document['date'], Fields::TYPE_DATE, $data['date']],
-
-                [$document['array'], Fields::TYPE_ARRAY, $document['array']],
-                [1, Fields::TYPE_INTEGER, 1],
-                [2, Fields::TYPE_INTEGER, 2],
-
-                [$document['yadas'], Fields::TYPE_ARRAY, $document['yadas']],
-
-                [$document['yadas']['foo'], Fields::TYPE_DOCUMENT, $data['yadas']['foo']],
-                ['1', Fields::TYPE_STRING, '1'],
-
-                [$document['yadas']['bar'], Fields::TYPE_DOCUMENT, $data['yadas']['bar']],
-                ['2', Fields::TYPE_STRING, '2'],
-
-                [$document['object'], Fields::TYPE_DOCUMENT, $data['object']],
                 ['foo', Fields::TYPE_STRING, 'foo'],
-                ['bar', Fields::TYPE_STRING, 'bar']
+                [['_class' => 'Fake\Foo', 'field' => 'foo'], Fields::TYPE_DOCUMENT, $entity]
             ]
         );
 
-        $converter = new DocumentConverter($this->converter, $this->models);
-        $result = $converter->convertToPHPValue($document);
+        $converter = new DocumentConverter($this->converter, $this->referencer, $this->models);
+        $result = $converter->convertToPHPValue(['_class' => 'Fake\Foo', 'field' => 'foo']);
 
         $this->assertEquals($entity, $result);
     }
 
-    public function testConvertToPHPValueWithoutClass()
+    public function testConvertEntityWithArrayToPHPValue()
     {
-        $id = new \MongoId();
-        $date = new \DateTime();
+        $entity = new Foo(null, [1]);
+        $model = new Model('\Fake\Foo', [new Id(), new ArrayOf('field', Fields::TYPE_INTEGER)]);
+        $this->models->register($model);
 
-        $entity = new \stdClass();
-        $entity->_id = $id;
-        $entity->_class = 'Fake\Foo';
-        $entity->str = 'foo';
-        $entity->bool = true;
-        $entity->date = $date;
-        $entity->array = ['foo' => 1, 'bar' => 2];
-        $entity->yadas = [
-            'foo' => [
-                '_class' => 'Fake\Yada',
-                'yada' => '1'
-            ],
-            'bar' => [
-                '_class' => 'Fake\Yada',
-                'yada' => '2'
-            ]
-        ];
-        $entity->object = [
-            '_class' => 'Fake\Bar',
-            'foo' => 'foo',
-            'bar' => 'bar'
-        ];
-
-        $data = [
-            '_id' => $id,
-            'str' => 'foo',
-            'bool' => true,
-            'date' => $date,
-            'array' => ['foo' => 1, 'bar' => 2],
-            'yadas' => [
-                'foo' => [
-                    '_class' => 'Fake\Yada',
-                    'yada' => '1'
-                ],
-                'bar' => [
-                    '_class' => 'Fake\Yada',
-                    'yada' => '2'
-                ]
-            ],
-            'object' => [
-                '_class' => 'Fake\Bar',
-                'foo' => 'foo',
-                'bar' => 'bar'
-            ]
-        ];
-
-        $document = [
-            '_id' => $id,
-            'str' => 'foo',
-            'bool' => true,
-            'date' => new \MongoDate($date->getTimestamp()),
-            'array' => ['foo' => 1, 'bar' => 2],
-            'yadas' => [
-                'foo' => [
-                    '_class' => 'Fake\Yada',
-                    'yada' => '1'
-                ],
-                'bar' => [
-                    '_class' => 'Fake\Yada',
-                    'yada' => '2'
-                ]
-            ],
-            'object' => [
-                '_class' => 'Fake\Bar',
-                'foo' => 'foo',
-                'bar' => 'bar'
-            ]
-        ];
-
-        $this->converter->expects($this->any())->method('convertToPHPValue')->willReturnMap(
+        $this->converter->expects($this->exactly(3))->method('convertToPHPValue')->willReturnMap(
             [
-                [$document['date'], Fields::TYPE_DATE, $entity->date],
-                [$data, Fields::TYPE_DOCUMENT, $entity],
+                [1, Fields::TYPE_INTEGER, 1],
+                [[1], Fields::TYPE_ARRAY, [1]],
+                [['_class' => 'Fake\Foo', 'field' => [1]], Fields::TYPE_DOCUMENT, $entity]
             ]
         );
 
-        $converter = new DocumentConverter($this->converter, $this->models);
-        $result = $converter->convertToPHPValue($document);
+        $converter = new DocumentConverter($this->converter, $this->referencer, $this->models);
+        $result = $converter->convertToPHPValue(['_class' => 'Fake\Foo', 'field' => [1]]);
+
+        $this->assertEquals($entity, $result);
+    }
+
+    public function testConvertEntityWithSubDocumentToPHPValue()
+    {
+        $subEntity = new \stdClass();
+        $entity = new Foo(null, $subEntity);
+        $model = new Model('\Fake\Foo', [new Id(), new Document('field')]);
+        $this->models->register($model);
+
+        $model = new Model('\stdClass', []);
+        $this->models->register($model);
+
+        $this->converter->expects($this->exactly(2))->method('convertToPHPValue')->willReturnMap(
+            [
+                [['_class' => 'stdClass'], Fields::TYPE_DOCUMENT, $subEntity],
+                [['_class' => 'Fake\Foo', 'field' => $subEntity], Fields::TYPE_DOCUMENT, $entity],
+            ]
+        );
+
+        $converter = new DocumentConverter($this->converter, $this->referencer, $this->models);
+        $result = $converter->convertToPHPValue(['_class' => 'Fake\Foo', 'field' => ['_class' => 'stdClass']]);
+
+        $this->assertEquals($entity, $result);
+    }
+
+    public function testConvertEntityWithReferenceToPHPValue()
+    {
+        $entity = new Foo(null, null);
+        $model = new Model('\Fake\Foo', [new Id(), new Reference('field')]);
+        $this->models->register($model);
+
+        $this->converter->expects($this->once())->method('convertToPHPValue')->willReturnMap(
+            [
+                [['_class' => 'Fake\Foo', 'field' => null], Fields::TYPE_DOCUMENT, $entity]
+            ]
+        );
+
+        $this->referencer->expects($this->once())->method('resolve')->willReturn(null);
+
+        $converter = new DocumentConverter($this->converter, $this->referencer, $this->models);
+        $result = $converter->convertToPHPValue(['_class' => 'Fake\Foo', 'field' => null]);
+
+        $this->assertEquals($entity, $result);
+    }
+
+    public function testConvertDocumentWithoutClassName()
+    {
+        $date = date('Y-m-d H:i:s');
+        $datetime = new \DateTime($date);
+        $mongodate = new \MongoDate(strtotime($date));
+
+        $entity = new \stdClass();
+        $entity->field = $datetime;
+
+        $this->converter->expects($this->exactly(2))->method('convertToPHPValue')->willReturnMap(
+            [
+                [$mongodate, Fields::TYPE_DATE, $datetime],
+                [['field' => $datetime], Fields::TYPE_DOCUMENT, $entity]
+            ]
+        );
+
+        $converter = new DocumentConverter($this->converter, $this->referencer, $this->models);
+        $result = $converter->convertToPHPValue(['field' => $mongodate]);
 
         $this->assertEquals($entity, $result);
     }

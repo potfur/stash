@@ -24,20 +24,38 @@ final class DocumentConverter implements DocumentConverterInterface
     private $converter;
 
     /**
+     * @var ReferenceResolverInterface
+     */
+    private $referencer;
+
+    /**
      * @var ModelCollection
      */
     private $models;
 
     /**
      * Constructor
+
      *
-     * @param ConverterInterface $converter
-     * @param ModelCollection    $models
+*@param ConverterInterface  $converter
+     * @param ReferenceResolverInterface $referencer
+     * @param ModelCollection     $models
      */
-    public function __construct(ConverterInterface $converter, ModelCollection $models)
+    public function __construct(ConverterInterface $converter, ReferenceResolverInterface $referencer, ModelCollection $models)
     {
         $this->converter = $converter;
+        $this->referencer = $referencer;
         $this->models = $models;
+    }
+
+    /**
+     * Link converter with connection for resolving references
+     *
+     * @param Connection $connection
+     */
+    public function connect(Connection $connection)
+    {
+        $this->referencer->connect($connection);
     }
 
     /**
@@ -99,6 +117,10 @@ final class DocumentConverter implements DocumentConverterInterface
     {
         if ($type === Fields::TYPE_ARRAY) {
             return $this->convertArrayToDatabaseValue($value, $field);
+        }
+
+        if ($type === Fields::TYPE_REFERENCE) {
+            return $this->referencer->store($value);
         }
 
         if ($type === Fields::TYPE_DOCUMENT) {
@@ -188,6 +210,10 @@ final class DocumentConverter implements DocumentConverterInterface
     {
         if ($type === Fields::TYPE_ARRAY) {
             return $this->convertArrayToPHPValue($value, $field);
+        }
+
+        if ($type === Fields::TYPE_REFERENCE) {
+            return $this->referencer->resolve($value);
         }
 
         if ($type === Fields::TYPE_DOCUMENT) {

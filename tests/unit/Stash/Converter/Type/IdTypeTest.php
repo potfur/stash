@@ -13,6 +13,12 @@ namespace Stash\Converter\Type;
 
 class IdTypeTest extends \PHPUnit_Framework_TestCase
 {
+    public function testType()
+    {
+        $type = new IdType();
+        $this->assertEquals('id', $type->getType());
+    }
+
     /**
      * @dataProvider valueProvider
      */

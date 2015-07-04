@@ -30,6 +30,11 @@ final class Model implements ModelInterface
     private $entity;
 
     /**
+     * @var string
+     */
+    private $collection;
+
+    /**
      * @var FieldInterface[]
      */
     private $fields = [];
@@ -39,10 +44,12 @@ final class Model implements ModelInterface
      *
      * @param string           $entity
      * @param FieldInterface[] $fields
+     * @param null|string      $collection
      */
-    public function __construct($entity, array $fields = [])
+    public function __construct($entity, array $fields = [], $collection = null)
     {
         $this->entity = $this->normalizeNamespace($entity);
+        $this->collection = $collection;
 
         foreach ($fields as $field) {
             $this->addField($field);
@@ -67,6 +74,16 @@ final class Model implements ModelInterface
     public function getClass()
     {
         return $this->entity;
+    }
+
+    /**
+     * Return collection name or null if model describes sub-document
+     *
+     * @return null|string
+     */
+    public function getCollection()
+    {
+        return $this->collection;
     }
 
     /**

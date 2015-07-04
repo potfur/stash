@@ -12,34 +12,32 @@
 namespace Stash;
 
 /**
- * Document converter interface
+ * Mongo reference resolver
  *
  * @package Stash
  */
-interface DocumentConverterInterface
+interface ReferenceResolverInterface
 {
     /**
-     * Link converter with connection for resolving references
+     * Link referencer with connection for resolving references
      *
      * @param Connection $connection
      */
     public function connect(Connection $connection);
 
     /**
-     * Convert from document instance into database representation
+     * Store reference in database format
      *
-     * @param object $document
+     * @pram object $entity
      *
      * @return array
      */
-    public function convertToDatabaseValue($document);
+    public function store($entity);
 
     /**
-     * Convert database representation into document instance
+     * Resolve reference from database format
      *
-     * @param array $document
-     *
-     * @return object
+     * @return null|object
      */
-    public function convertToPHPValue(array $document);
+    public function resolve($reference);
 }

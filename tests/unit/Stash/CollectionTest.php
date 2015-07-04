@@ -12,8 +12,7 @@
 namespace Stash;
 
 
-use Fake\Entity;
-use Fake\Yada;
+use Fake\Foo;
 
 class CollectionTest extends \PHPUnit_Framework_TestCase
 {
@@ -23,6 +22,11 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
     private $collection;
 
     /**
+     * @var ModelCollection|\PHPUnit_Framework_MockObject_MockObject
+     */
+    private $models;
+
+    /**
      * @var DocumentConverterInterface|\PHPUnit_Framework_MockObject_MockObject
      */
     private $converter;
@@ -30,51 +34,74 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
     public function setUp()
     {
         $this->collection = $this->getMockBuilder('\MongoCollection')->disableOriginalConstructor()->getMock();
+        $this->collection->expects($this->any())->method('getName')->willReturn('stdclass');
+
+        $model = $this->getMock('\Stash\ModelInterface');
+        $model->expects($this->any())->method('getClass')->willReturn('stdClass');
+        $model->expects($this->any())->method('getCollection')->willReturn('stdclass');
+
+        $this->models = $this->getMock('\Stash\ModelCollection');
+        $this->models->expects($this->any())->method('getByInstance')->willReturn($model);
+
         $this->converter = $this->getMock('\Stash\DocumentConverterInterface');
-    }
-
-    public function testName()
-    {
-        $this->collection->expects($this->once())->method('getName')->with();
-
-        $collection = new Collection($this->collection, $this->converter);
-        $collection->getName();
     }
 
     public function testInsertFail()
     {
-        $this->converter->expects($this->any())->method('convertToDatabaseValue')->willReturn(['yada' => 'foo']);
-        $this->collection->expects($this->any())->method('insert')->with(['yada' => 'foo'], [])->willReturn(null);
+        $this->converter->expects($this->any())->method('convertToDatabaseValue')->willReturn(['field' => 'foo']);
+        $this->collection->expects($this->any())->method('insert')->with(['field' => 'foo'], [])->willReturn(null);
 
-        $collection = new Collection($this->collection, $this->converter);
-        $this->assertFalse($collection->insert(new Yada(['yada' => 'foo']), []));
+        $collection = new Collection($this->collection, $this->models, $this->converter);
+        $this->assertFalse($collection->insert(new Foo(null, 'foo'), []));
     }
 
     public function testInsert()
     {
-        $this->converter->expects($this->once())->method('convertToDatabaseValue')->willReturn(['yada' => 'foo']);
-        $this->collection->expects($this->once())->method('insert')->with(['yada' => 'foo'], [])->willReturn(['ok' => 1]);
+        $this->converter->expects($this->once())->method('convertToDatabaseValue')->willReturn(['field' => 'foo']);
+        $this->collection->expects($this->once())->method('insert')->with(['field' => 'foo'], [])->willReturn(['ok' => 1]);
 
-        $collection = new Collection($this->collection, $this->converter);
-        $collection->insert(new Yada(['yada' => 'foo']), []);
+        $collection = new Collection($this->collection, $this->models, $this->converter);
+        $collection->insert(new Foo(null, 'foo'), []);
     }
 
     public function testSaveFail()
     {
-        $this->converter->expects($this->any())->method('convertToDatabaseValue')->willReturn(['yada' => 'foo']);
-        $this->collection->expects($this->any())->method('insert')->with(['yada' => 'foo'], [])->willReturn(null);
+        $this->converter->expects($this->any())->method('convertToDatabaseValue')->willReturn(['field' => 'foo']);
+        $this->collection->expects($this->any())->method('insert')->with(['field' => 'foo'], [])->willReturn(null);
 
-        $collection = new Collection($this->collection, $this->converter);
-        $this->assertFalse($collection->save(new Yada(['yada' => 'foo']), []));
+        $collection = new Collection($this->collection, $this->models, $this->converter);
+        $this->assertFalse($collection->save(new Foo(null, 'foo'), []));
     }
 
     public function testSave()
     {
-        $this->converter->expects($this->once())->method('convertToDatabaseValue')->willReturn(['yada' => 'foo']);
-        $this->collection->expects($this->once())->method('save')->with(['yada' => 'foo'], [])->willReturn(['ok' => 1]);
+        $this->converter->expects($this->once())->method('convertToDatabaseValue')->willReturn(['field' => 'foo']);
+        $this->collection->expects($this->once())->method('save')->with(['field' => 'foo'], [])->willReturn(['ok' => 1]);
 
-        $collection = new Collection($this->collection, $this->converter);
-        $collection->save(new Yada(['yada' => 'foo']), []);
+        $collection = new Collection($this->collection, $this->models, $this->converter);
+        $collection->save(new Foo(null, 'foo'), []);
+    }
+
+    public function testSaveArray()
+    {
+        $this->converter->expects($this->never())->method('convertToDatabaseValue');
+        $this->collection->expects($this->once())->method('save')->with(['field' => 'foo'], [])->willReturn(['ok' => 1]);
+
+        $collection = new Collection($this->collection, $this->models, $this->converter);
+        $collection->save(['field' => 'foo'], []);
+    }
+
+    /**
+     * @expectedException \Stash\InvalidEntityException
+     * @expectedExceptionMessage Entity of "stdClass" can not be saved in "foobar"
+     */
+    public function testSaveInvalidEntity()
+    {
+        $collection = $this->getMockBuilder('\MongoCollection')->disableOriginalConstructor()->getMock();
+        $collection->expects($this->any())->method('getName')->willReturn('foobar');
+
+        $collection = new Collection($collection, $this->models, $this->converter);
+        $collection->save(new \stdClass(), []);
     }
 
     /**
@@ -85,7 +112,7 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
         $this->converter->expects($this->any())->method('convertToDatabaseValue')->willReturn(['_id' => new \MongoId()]);
         $this->collection->expects($this->any())->method('insert')->willReturn(['ok' => 1]);
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->models, $this->converter);
         $collection->insert($entity, []);
 
         $this->assertInstanceOf('\MongoId', $entity->_id);
@@ -99,7 +126,7 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
         $this->converter->expects($this->any())->method('convertToDatabaseValue')->willReturn(['_id' => new \MongoId()]);
         $this->collection->expects($this->any())->method('save')->willReturn(['ok' => 1]);
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->models, $this->converter);
         $collection->save($entity, []);
 
         $this->assertInstanceOf('\MongoId', $entity->_id);
@@ -108,7 +135,7 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
     public function entityProvider()
     {
         return [
-            [new Entity()],
+            [new Foo()],
             [new \stdClass()]
         ];
     }
@@ -119,7 +146,7 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
 
         $this->collection->expects($this->once())->method('find')->with(['foo' => 'bar'], [])->willReturn($cursor);
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->models, $this->converter);
         $collection->find(['foo' => 'bar']);
     }
 
@@ -128,8 +155,19 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
         $this->collection->expects($this->once())->method('findOne')->with(['foo' => 'bar'], [])->willReturn(['yada' => 'foo']);
         $this->converter->expects($this->once())->method('convertToPHPValue')->with(['yada' => 'foo']);
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->models, $this->converter);
         $collection->findOne(['foo' => 'bar']);
+    }
+
+    public function testFindById()
+    {
+        $id = new \MongoId();
+
+        $this->collection->expects($this->once())->method('findOne')->with(['_id' => $id], [])->willReturn(['yada' => 'foo']);
+        $this->converter->expects($this->once())->method('convertToPHPValue')->with(['yada' => 'foo']);
+
+        $collection = new Collection($this->collection, $this->models, $this->converter);
+        $collection->findById($id);
     }
 
     public function testFindAndModify()
@@ -137,7 +175,7 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
         $this->collection->expects($this->once())->method('findAndModify')->with(['foo' => 'bar'], ['foo' => 'yada'])->willReturn(['foo' => 'yada']);
         $this->converter->expects($this->once())->method('convertToPHPValue')->with(['foo' => 'yada']);
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->models, $this->converter);
         $collection->findAndModify(['foo' => 'bar'], ['foo' => 'yada']);
     }
 
@@ -145,7 +183,7 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
     {
         $this->collection->expects($this->once())->method('remove')->with(['foo' => 'bar'], []);
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->models, $this->converter);
         $collection->remove(['foo' => 'bar']);
     }
 
@@ -155,9 +193,9 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
      */
     public function testRemoveEntityWithoutField()
     {
-        $entity = new Yada();
+        $entity = new \stdClass();
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->models, $this->converter);
         $collection->remove($entity);
     }
 
@@ -167,36 +205,36 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
      */
     public function testEntityWithoutIdValue()
     {
-        $entity = new Entity();
+        $entity = new Foo();
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->models, $this->converter);
         $collection->remove($entity);
     }
 
     public function testRemoveEntity()
     {
         $id = new \MongoId();
-        $entity = new Entity($id);
+        $entity = new Foo($id);
 
         $this->collection->expects($this->once())->method('remove')->with(['_id' => $id], []);
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->models, $this->converter);
         $collection->remove($entity);
     }
 
     public function testCall()
     {
-        $this->collection->expects($this->once())->method('__toString');
+        $this->collection->expects($this->once())->method('getName');
 
-        $collection = new Collection($this->collection, $this->converter);
-        $collection->__toString();
+        $collection = new Collection($this->collection, $this->models, $this->converter);
+        $collection->getName();
     }
 
     public function testGetSet()
     {
         $this->collection->w = 1;
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->models, $this->converter);
         $collection->w = 1;
 
         $this->assertEquals(1, $collection->w);

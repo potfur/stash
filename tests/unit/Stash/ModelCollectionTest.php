@@ -14,33 +14,6 @@ namespace Stash;
 
 class ModelCollectionTest extends \PHPUnit_Framework_TestCase
 {
-    public function testAddModel()
-    {
-        $modelA = $this->getMock('\Stash\ModelInterface');
-        $modelA->expects($this->any())->method('getClass')->willReturn('ClassA');
-
-        $modelB = $this->getMock('\Stash\ModelInterface');
-        $modelB->expects($this->any())->method('getClass')->willReturn('ClassB');
-
-        $collection = new ModelCollection([$modelA]);
-        $collection->register($modelB);
-
-        $this->assertEquals(['ClassA' => $modelA, 'ClassB' => $modelB], $collection->getModels());
-    }
-
-    public function testGetClasses()
-    {
-        $modelA = $this->getMock('\Stash\ModelInterface');
-        $modelA->expects($this->any())->method('getClass')->willReturn('ClassA');
-
-        $modelB = $this->getMock('\Stash\ModelInterface');
-        $modelB->expects($this->any())->method('getClass')->willReturn('ClassB');
-
-        $collection = new ModelCollection([$modelA, $modelB]);
-
-        $this->assertEquals(['ClassA', 'ClassB'], $collection->getClasses());
-    }
-
     /**
      * @expectedException \Stash\Model\ModelException
      * @expectedExceptionMessage Model for "stdClass" not found
@@ -100,5 +73,31 @@ class ModelCollectionTest extends \PHPUnit_Framework_TestCase
         $collection = new ModelCollection([$model]);
 
         $this->assertEquals($model, $collection->getByInstance(new \stdClass()));
+    }
+
+    public function testGetByCollection()
+    {
+        $model = $this->getMock('\Stash\ModelInterface');
+        $model->expects($this->any())->method('getClass')->willReturn('stdClass');
+        $model->expects($this->any())->method('getCollection')->willReturn('stdclass');
+
+        $collection = new ModelCollection([$model]);
+
+        $this->assertEquals($model, $collection->getByCollection('stdclass'));
+    }
+
+    /**
+     * @expectedException \Stash\Model\ModelException
+     * @expectedExceptionMessage Model with collection "foo" not found
+     */
+    public function testGetUndefinedByCollection()
+    {
+        $model = $this->getMock('\Stash\ModelInterface');
+        $model->expects($this->any())->method('getClass')->willReturn('stdClass');
+        $model->expects($this->any())->method('getCollection')->willReturn('stdclass');
+
+        $collection = new ModelCollection([$model]);
+
+        $this->assertEquals($model, $collection->getByCollection('foo'));
     }
 }

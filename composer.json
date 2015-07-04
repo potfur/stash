@@ -1,6 +1,6 @@
 {
   "name": "potfur/stash",
-  "version": "v0.2.1",
+  "version": "v0.3",
   "description": "Stash: Mongo ODM",
   "keywords": [
     "document",
@@ -18,7 +18,8 @@
   ],
   "require": {
     "php": ">=5.4",
-    "ext-mongo": "*"
+    "ext-mongo": "*",
+    "ocramius/proxy-manager": "1.0.*"
   },
   "require-dev": {
     "phpunit/phpunit": "~4.6",
@@ -29,12 +30,12 @@
     "bin-dir": "bin"
   },
   "autoload": {
-    "psr-4": {"Stash\\": "./src/Stash"}
+    "psr-0": {"Stash\\": "./src"}
   },
   "autoload-dev": {
-    "psr-4": {
-      "Fake\\": "./tests/Fake",
-      "Stash\\": "./tests/integration/Stash"
+    "psr-0": {
+      "Fake\\": "./tests",
+      "Stash\\": "./tests/integration"
     }
   }
 }

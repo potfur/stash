@@ -12,6 +12,7 @@
 namespace Stash\Converter\Type;
 
 use Stash\Converter\TypeInterface;
+use Stash\Fields;
 
 /**
  * Boolean converter
@@ -20,6 +21,16 @@ use Stash\Converter\TypeInterface;
  */
 final class BooleanType implements TypeInterface
 {
+    /**
+     * Return type name
+     *
+     * @return string
+     */
+    public function getType()
+    {
+        return Fields::TYPE_BOOLEAN;
+    }
+
     /**
      * Convert a value from its PHP representation.
      *

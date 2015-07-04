@@ -11,14 +11,20 @@
 
 namespace Stash\Converter\Type;
 
-class DoubleTypeTest extends \PHPUnit_Framework_TestCase
+class DecimalTypeTest extends \PHPUnit_Framework_TestCase
 {
+    public function testType()
+    {
+        $type = new DecimalType();
+        $this->assertEquals('decimal', $type->getType());
+    }
+
     /**
      * @dataProvider valueProvider
      */
     public function testConvertToDatabaseValue($value, $expected)
     {
-        $type = new DoubleType();
+        $type = new DecimalType();
         $this->assertSame($expected, $type->convertToDatabaseValue($value));
     }
 
@@ -27,7 +33,7 @@ class DoubleTypeTest extends \PHPUnit_Framework_TestCase
      */
     public function testConvertToPHPValue($value, $expected)
     {
-        $type = new DoubleType();
+        $type = new DecimalType();
         $this->assertSame($expected, $type->convertToPHPValue($value));
     }
 

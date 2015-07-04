@@ -13,21 +13,12 @@ namespace Fake;
 
 class Foo
 {
-    private $_id;
-    private $int;
-    private $str;
-    private $bool;
-    private $date;
-    private $array;
-    private $yadas;
-    private $object;
+    public $_id;
+    public $field;
 
-    public function __construct($attr = [])
+    public function __construct($id = null, $field = null)
     {
-        foreach ($attr as $key => $value) {
-            if (property_exists($this, $key)) {
-                $this->$key = $value;
-            }
-        }
+        $this->_id = $id;
+        $this->field = $field;
     }
 }
