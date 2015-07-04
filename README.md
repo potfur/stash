@@ -1,13 +1,12 @@
 # Stash - MongoDB ODM
 
 **Stash** is an object-document mapper for MongoDB written in PHP.
-It adds fully transparent persistence layer while still preserving easy way how MongoDB is handled.   
+It adds a fully transparent persistence layer while still preserving MongoDB's ease of use and way of handling data.
 
-This means that MongoDB can be used in almost exact same way as it would be used with arrays.
-But with small but important differences - instead of returning plain arrays, **Stash** will return objects - entites.
-Since **Stash** returns entities it also can store them.
+This means that MongoDB can be used almost in the exact same way as it would be used with arrays.
+The small, but important, difference here is that instead of returning plain arrays, **Stash** will return objects (entities). And of course, **Stash** not only returns entities, but it also stores them.
 
-## Next steps
+## Future Roadmap
 
  - event dispatcher
  - references
@@ -73,7 +72,7 @@ $models->register(
 );
 ```
 
-Connection to database:
+Database connection:
 
 ```php
 $connection = new Connection(
@@ -83,7 +82,7 @@ $connection = new Connection(
 $connection->selectDB('test');
 ```
 
-Creating entity and how to store it:
+Entity creation and storage:
 
 ```php
 class Order
@@ -162,8 +161,8 @@ $order = new Order(
 $connection->getCollection('order')->save($order);
 ```
 
-And this is stored MongoDB semi-JSON representation.
-When saving objects - entities **Stash** adds `_class` field, where it stores class name
+And this is the stored MongoDB's semi-JSON representation.
+When saving objects (entities), **Stash** adds the `_class` field, where it stores the class name
 
 ```
 {
