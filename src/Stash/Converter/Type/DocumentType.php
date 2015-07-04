@@ -23,6 +23,16 @@ use Stash\Fields;
 final class DocumentType implements TypeInterface
 {
     /**
+     * Return type name
+     *
+     * @return string
+     */
+    public function getType()
+    {
+        return Fields::TYPE_DOCUMENT;
+    }
+
+    /**
      * Convert a value from its PHP representation.
      *
      * @param object $value

@@ -12,6 +12,7 @@
 namespace Stash\Converter\Type;
 
 use Stash\Converter\TypeInterface;
+use Stash\Fields;
 
 /**
  * Date converter
@@ -20,6 +21,16 @@ use Stash\Converter\TypeInterface;
  */
 final class DateType implements TypeInterface
 {
+    /**
+     * Return type name
+     *
+     * @return string
+     */
+    public function getType()
+    {
+        return Fields::TYPE_DATE;
+    }
+
     /**
      * Convert a value from its PHP representation.
      *

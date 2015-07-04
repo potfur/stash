@@ -9,15 +9,14 @@
 * file that was distributed with this source code.
 */
 
-namespace Fake;
+namespace Stash;
 
-class Entity
+/**
+ * Exception throw when invalid reference was provided
+ *
+ * @package Stash
+ */
+class InvalidReferenceException extends StashException
 {
-    public $_id;
-
-    public function __construct(\MongoId $id = null)
-    {
-        $this->_id = $id;
-    }
 
 }

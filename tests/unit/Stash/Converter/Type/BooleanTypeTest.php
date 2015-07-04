@@ -13,6 +13,12 @@ namespace Stash\Converter\Type;
 
 class BooleanTypeTest extends \PHPUnit_Framework_TestCase
 {
+    public function testType()
+    {
+        $type = new BooleanType();
+        $this->assertEquals('boolean', $type->getType());
+    }
+
     /**
      * @dataProvider valueProvider
      */

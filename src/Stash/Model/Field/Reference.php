@@ -13,14 +13,13 @@ namespace Stash\Model\Field;
 
 use Stash\FieldInterface;
 use Stash\Fields;
-use Stash\Model\ModelException;
 
 /**
- * Scalar field
+ * Reference field
  *
  * @package Stash
  */
-final class Scalar implements FieldInterface
+final class Reference implements FieldInterface
 {
     /**
      * @var string
@@ -28,35 +27,11 @@ final class Scalar implements FieldInterface
     private $name;
 
     /**
-     * @var string
-     */
-    private $type;
-
-    /**
      * @param string $name
-     * @param string $type
      */
-    public function __construct($name, $type)
+    public function __construct($name)
     {
         $this->name = (string) $name;
-
-        $this->assertType($type);
-        $this->type = (string) $type;
-    }
-
-    /**
-     * Assert if type is scalar
-     *
-     * @param string $type
-     *
-     * @throws ModelException
-     */
-    private function assertType($type)
-    {
-        $types = [Fields::TYPE_BOOLEAN, Fields::TYPE_INTEGER, Fields::TYPE_DECIMAL, Fields::TYPE_STRING];
-        if (!in_array($type, $types)) {
-            throw new ModelException(sprintf('Invalid type for scalar field, got "%s"', $type));
-        }
     }
 
     /**
@@ -76,7 +51,7 @@ final class Scalar implements FieldInterface
      */
     public function getType()
     {
-        return $this->type;
+        return Fields::TYPE_REFERENCE;
     }
 
     /**

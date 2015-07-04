@@ -13,6 +13,12 @@ namespace Stash\Converter\Type;
 
 class DateTypeTest extends \PHPUnit_Framework_TestCase
 {
+    public function testType()
+    {
+        $type = new DateType();
+        $this->assertEquals('date', $type->getType());
+    }
+
     /**
      * @dataProvider phpValueProvider
      */

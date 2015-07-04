@@ -11,17 +11,7 @@
 
 namespace Stash\Converter;
 
-use Stash\Converter\Type\ArrayType;
-use Stash\Converter\Type\BooleanType;
-use Stash\Converter\Type\DateType;
-use Stash\Converter\Type\DocumentType;
-use Stash\Converter\Type\DoubleType;
-use Stash\Converter\Type\IdType;
-use Stash\Converter\Type\IntegerType;
-use Stash\Converter\Type\StringType;
 use Stash\ConverterInterface;
-use Stash\Fields;
-use Stash\NormalizeNamespace;
 
 /**
  * Type converter
@@ -30,8 +20,6 @@ use Stash\NormalizeNamespace;
  */
 final class Converter implements ConverterInterface
 {
-    use NormalizeNamespace;
-
     /**
      * @var TypeInterface[]
      */
@@ -39,17 +27,24 @@ final class Converter implements ConverterInterface
 
     /**
      * Constructor
+     *
+     * @param array $types
      */
-    public function __construct()
+    public function __construct(array $types = [])
     {
-        $this->types[Fields::TYPE_ID] = new IdType();
-        $this->types[Fields::TYPE_BOOLEAN] = new BooleanType();
-        $this->types[Fields::TYPE_INTEGER] = new IntegerType();
-        $this->types[Fields::TYPE_DOUBLE] = new DoubleType();
-        $this->types[Fields::TYPE_STRING] = new StringType();
-        $this->types[Fields::TYPE_DATE] = new DateType();
-        $this->types[Fields::TYPE_ARRAY] = new ArrayType();
-        $this->types[Fields::TYPE_DOCUMENT] = new DocumentType();
+        foreach ($types as $type) {
+            $this->addType($type);
+        }
+    }
+
+    /**
+     * Add type to converter
+     *
+     * @param TypeInterface $type
+     */
+    public function addType(TypeInterface $type)
+    {
+        $this->types[$type->getType()] = $type;
     }
 
     /**
@@ -90,8 +85,6 @@ final class Converter implements ConverterInterface
      */
     private function getConverter($type)
     {
-        $type = $this->normalizeNamespace($type);
-
         if (isset($this->types[$type])) {
             return $this->types[$type];
         }

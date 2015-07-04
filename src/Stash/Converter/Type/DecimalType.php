@@ -12,14 +12,25 @@
 namespace Stash\Converter\Type;
 
 use Stash\Converter\TypeInterface;
+use Stash\Fields;
 
 /**
- * Double converter
+ * Decimal converter
  *
  * @package Stash
  */
-final class DoubleType implements TypeInterface
+final class DecimalType implements TypeInterface
 {
+    /**
+     * Return type name
+     *
+     * @return string
+     */
+    public function getType()
+    {
+        return Fields::TYPE_DECIMAL;
+    }
+
     /**
      * Convert a value from its PHP representation.
      *

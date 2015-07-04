@@ -26,6 +26,13 @@ interface ModelInterface
     public function getClass();
 
     /**
+     * Return collection name or null if model describes sub-document
+     *
+     * @return null|string
+     */
+    public function getCollection();
+
+    /**
      * Return true if field with such name exists in model
      *
      * @param string $name

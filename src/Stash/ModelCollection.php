@@ -29,6 +29,11 @@ class ModelCollection
     private $models = [];
 
     /**
+     * @var ModelInterface[]
+     */
+    private $collections = [];
+
+    /**
      * Constructor
      *
      * @param ModelInterface[] $models
@@ -48,24 +53,10 @@ class ModelCollection
     public function register(ModelInterface $model)
     {
         $this->models[$model->getClass()] = $model;
-    }
 
-    /**
-     * Return all registered models
-     *
-     * @return Model[]
-     */
-    public function getModels()
-    {
-        return $this->models;
-    }
-
-    /**
-     * Return all registered document classes
-     */
-    public function getClasses()
-    {
-        return array_keys($this->models);
+        if($model->getCollection() !== null) {
+            $this->collections[$model->getCollection()] = &$this->models[$model->getClass()];
+        }
     }
 
     /**
@@ -73,7 +64,7 @@ class ModelCollection
      *
      * @param string $class
      *
-     * @return Model
+     * @return ModelInterface
      * @throws ModelException
      */
     public function getByClass($class)
@@ -92,7 +83,7 @@ class ModelCollection
      *
      * @param object $instance
      *
-     * @return Model
+     * @return ModelInterface
      * @throws ModelException
      */
     public function getByInstance($instance)
@@ -102,5 +93,22 @@ class ModelCollection
         }
 
         return $this->getByClass(get_class($instance));
+    }
+
+    /**
+     * Get model by collection name
+     *
+     * @param string $collection
+     *
+     * @return ModelInterface
+     * @throws ModelException
+     */
+    public function getByCollection($collection)
+    {
+        if (isset($this->collections[$collection])) {
+            return $this->collections[$collection];
+        }
+
+        throw new ModelException(sprintf('Model with collection "%s" not found', $collection));
     }
 }

@@ -19,6 +19,13 @@ namespace Stash\Converter;
 interface TypeInterface
 {
     /**
+     * Return type name
+     *
+     * @return string
+     */
+    public function getType();
+
+    /**
      * Convert a value from its PHP representation
      *
      * @param mixed $value The value to convert.

@@ -13,6 +13,12 @@ namespace Stash\Converter\Type;
 
 class ArrayTypeTest extends \PHPUnit_Framework_TestCase
 {
+    public function testType()
+    {
+        $type = new ArrayType();
+        $this->assertEquals('array', $type->getType());
+    }
+
     /**
      * @dataProvider valueProvider
      */

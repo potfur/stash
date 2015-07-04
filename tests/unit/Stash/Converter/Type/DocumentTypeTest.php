@@ -27,6 +27,12 @@ class FakeObject
 
 class DocumentTypeTest extends \PHPUnit_Framework_TestCase
 {
+    public function testType()
+    {
+        $type = new DocumentType();
+        $this->assertEquals('document', $type->getType());
+    }
+
     public function testConvertNullToDatabaseValue()
     {
         $converter = new DocumentType('\Stash\Converter\Type\FakeObject');

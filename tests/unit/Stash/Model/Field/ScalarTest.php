@@ -44,7 +44,7 @@ class ScalarTest extends \PHPUnit_Framework_TestCase
         return [
             [Fields::TYPE_BOOLEAN],
             [Fields::TYPE_INTEGER],
-            [Fields::TYPE_DOUBLE],
+            [Fields::TYPE_DECIMAL],
             [Fields::TYPE_STRING],
         ];
     }

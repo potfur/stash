@@ -11,7 +11,7 @@
 
 namespace Stash;
 
-use Fake\Yada;
+use Fake\Foo;
 
 class CursorTest extends \PHPUnit_Framework_TestCase
 {
@@ -21,7 +21,7 @@ class CursorTest extends \PHPUnit_Framework_TestCase
     private $cursor;
 
     /**
-     * @var ConverterInterface|\PHPUnit_Framework_MockObject_MockObject
+     * @var DocumentConverterInterface|\PHPUnit_Framework_MockObject_MockObject
      */
     private $converter;
 
@@ -40,8 +40,8 @@ class CursorTest extends \PHPUnit_Framework_TestCase
     public function testIterator()
     {
         $this->cursor->expects($this->any())->method('current')->willReturnOnConsecutiveCalls(
-            ['yada' => 'foo'],
-            ['yada' => 'bar']
+            ['field' => 'foo'],
+            ['field' => 'bar']
         );
         $this->cursor->expects($this->any())->method('key')->willReturnOnConsecutiveCalls(
             0,
@@ -55,7 +55,7 @@ class CursorTest extends \PHPUnit_Framework_TestCase
 
         $this->converter->expects($this->any())->method('convertToPHPValue')->willReturnCallback(
             function ($data) {
-                return new Yada($data);
+                return new Foo(null, $data['field']);
             }
         );
 
@@ -67,8 +67,8 @@ class CursorTest extends \PHPUnit_Framework_TestCase
         }
 
         $expected = [
-            0 => new Yada(['yada' => 'foo']),
-            1 => new Yada(['yada' => 'bar'])
+            0 => new Foo(null, 'foo'),
+            1 => new Foo(null, 'bar')
         ];
 
         $this->assertEquals($expected, $result);
