@@ -19,7 +19,7 @@ use Stash\Model\ModelException;
  *
  * @package Stash
  */
-final class ModelCollection
+class ModelCollection
 {
     use NormalizeNamespace;
 
