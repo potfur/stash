@@ -179,6 +179,91 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
         $collection->findAndModify(['foo' => 'bar'], ['foo' => 'yada']);
     }
 
+    public function testAggregateFails()
+    {
+        $this->collection->expects($this->any())->method('aggregate')->willReturn(
+            [
+                'result' => [],
+                'ok' => 0
+            ]
+        );
+
+        $collection = new Collection($this->collection, $this->models, $this->converter);
+        $result = $collection->aggregate(['foo' => 'bar'], ['foo' => 'yada']);
+
+        $this->assertFalse($result);
+    }
+
+    public function testAggregateWithoutClass()
+    {
+        $this->collection->expects($this->once())->method('aggregate')->with(['foo' => 'bar'], ['foo' => 'yada'])->willReturn(
+            [
+                'result' => [
+                    ['_id' => ['tags' => 'good'], 'authors' => ['bob']],
+                    ['_id' => ['tags' => 'fun'], 'authors' => ['bob']],
+                ],
+                'ok' => 1
+            ]
+        );
+        $this->converter->expects($this->never())->method('convertToPHPValue');
+
+        $collection = new Collection($this->collection, $this->models, $this->converter);
+        $collection->aggregate(['foo' => 'bar'], ['foo' => 'yada']);
+    }
+
+    public function testAggregateWithClass()
+    {
+        $this->collection->expects($this->once())->method('aggregate')->with(['foo' => 'bar'], ['foo' => 'yada'])->willReturn(
+            [
+                'result' => [
+                    ['_id' => ['tags' => 'good'], 'authors' => ['bob']],
+                    ['_id' => ['tags' => 'fun'], 'authors' => ['bob']],
+                ],
+                'ok' => 1
+            ]
+        );
+        $this->converter->expects($this->exactly(2))->method('convertToPHPValue')->withConsecutive(
+            [['_id' => ['tags' => 'good'], '_class' => '\stdClass', 'authors' => ['bob']]],
+            [['_id' => ['tags' => 'fun'], '_class' => '\stdClass', 'authors' => ['bob']]]
+        );
+
+        $collection = new Collection($this->collection, $this->models, $this->converter);
+        $collection->aggregate(['foo' => 'bar'], ['foo' => 'yada'], '\stdClass');
+    }
+
+    public function testCount()
+    {
+        $this->collection->expects($this->once())->method('count')->with(['foo' => 'bar'], ['foo' => 'yada'])->willReturn(1);
+
+        $collection = new Collection($this->collection, $this->models, $this->converter);
+        $collection->count(['foo' => 'bar'], ['foo' => 'yada']);
+    }
+
+    public function testDistinct()
+    {
+        $this->collection->expects($this->once())->method('distinct')->with(['foo'], ['foo' => 'yada'])->willReturn(['foo', 'bar']);
+
+        $collection = new Collection($this->collection, $this->models, $this->converter);
+        $collection->distinct(['foo'], ['foo' => 'yada']);
+    }
+
+    public function testGroup()
+    {
+        $keys = ['foo' => 1];
+        $initial = ['items' => []];
+        $reduce = new \MongoCode("function (obj, prev) { prev.items.push(obj.name); }");
+
+        $this->collection->expects($this->once())->method('group')->with($keys, $initial, $reduce)->willReturn(
+            [
+                ['category' => 'fruit', 'items' => ['apple', 'peach', 'banana']],
+                ['category' => 'veggie', 'items' => ['corn', 'broccoli']]
+            ]
+        );
+
+        $collection = new Collection($this->collection, $this->models, $this->converter);
+        $collection->group($keys, $initial, $reduce);
+    }
+
     public function testRemove()
     {
         $this->collection->expects($this->once())->method('remove')->with(['foo' => 'bar'], []);
@@ -220,24 +305,5 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
 
         $collection = new Collection($this->collection, $this->models, $this->converter);
         $collection->remove($entity);
-    }
-
-    public function testCall()
-    {
-        $this->collection->expects($this->once())->method('getName');
-
-        $collection = new Collection($this->collection, $this->models, $this->converter);
-        $collection->getName();
-    }
-
-    public function testGetSet()
-    {
-        $this->collection->w = 1;
-
-        $collection = new Collection($this->collection, $this->models, $this->converter);
-        $collection->w = 1;
-
-        $this->assertEquals(1, $collection->w);
-        $this->assertEquals(1, $this->collection->w);
     }
 }

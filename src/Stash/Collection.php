@@ -14,30 +14,6 @@ namespace Stash;
 /**
  * Mongo collection decorator
  * Works on entities instead of plain array documents
- * @method array aggregate(array $pipeline, array $options = [])
- * @method mixed batchInsert(array $a, array $options = [])
- * @method int count(array $query = [], array $options = [])
- * @method array createDBRef($document_or_id)
- * @method bool createIndex(array $keys, array $options = [])
- * @method array deleteIndex($keys)
- * @method array deleteIndexes()
- * @method array distinct($key, array $query)
- * @method array drop()
- * @method bool ensureIndex($key, array $options = [])
- * @method array getDBRef(array $ref)
- * @method array getIndexInfo()
- * @method string getName()
- * @method array getReadPreference()
- * @method bool getSlaveOkay()
- * @method array getWriteConcern()
- * @method array group($keys, array $initial, \MongoCode $reduce, array $options = [])
- * @method array parallelCollectionScan(int $num_cursors)
- * @method bool setReadPreference(string $read_preference, array $tags = [])
- * @method bool setSlaveOkay(bool $ok = true)
- * @method bool setWriteConcern(mixed $w, int $wtimeout = null)
- * @method string __toString()
- * @method bool|array update(array $criteria, array $new_object, array $options = [])
- * @method array validate(bool $scan_data = false)
  *
  * @package Stash
  */
@@ -70,6 +46,16 @@ class Collection
         $this->collection = $collection;
         $this->models = $models;
         $this->converter = $converter;
+    }
+
+    /**
+     * Returns this collection's name
+     *
+     * @return string
+     */
+    public function getName()
+    {
+        return $this->collection->getName();
     }
 
     /**
@@ -129,6 +115,18 @@ class Collection
     }
 
     /**
+     * Returns true if operation was executed successfully
+     *
+     * @param array $result
+     *
+     * @return bool
+     */
+    private function isOk($result)
+    {
+        return is_array($result) && isset($result['ok']) && $result['ok'] == 1;
+    }
+
+    /**
      * Update document with identifier if upsert was successful
      *
      * @param array|object $document
@@ -139,7 +137,7 @@ class Collection
      */
     private function updateDocument($document, array $raw, $result)
     {
-        if (is_array($result) && isset($result['ok']) && $result['ok'] == 1) {
+        if ($this->isOk($result)) {
             $this->setIdentifier($document, $raw);
 
             return true;
@@ -192,8 +190,6 @@ class Collection
         return $this->findOne([Fields::KEY_ID => $id], [], $options);
     }
 
-    // TODO - add getById
-
     /**
      * Update a document and return it
      *
@@ -209,6 +205,76 @@ class Collection
         $result = $this->collection->findAndModify($query, $update, $fields, $options);
 
         return $this->converter->convertToPHPValue($result);
+    }
+
+    /**
+     * Perform an aggregation using the aggregation pipeline
+     *
+     * @param array       $pipeline
+     * @param array       $options
+     * @param null|string $className
+     *
+     * @return array|bool
+     */
+    public function aggregate(array $pipeline, array $options = [], $className = null)
+    {
+        $result = $this->collection->aggregate($pipeline, $options);
+        if (!$this->isOk($result)) {
+            return false;
+        }
+
+        if ($className === null) {
+            return $result;
+        }
+
+        foreach ($result['result'] as &$document) {
+            $document[Fields::KEY_CLASS] = $className;
+            $document = $this->converter->convertToPHPValue($document);
+            unset($document);
+        }
+
+        return $result['result'];
+    }
+
+    /**
+     * Counts the number of documents in this collection
+     *
+     * @param array $query
+     * @param array $options
+     *
+     * @return int
+     */
+    public function count(array $query, array $options = [])
+    {
+        return (int) $this->collection->count($query, $options);
+    }
+
+    /**
+     * Retrieve a list of distinct values for the given key across a collection
+     *
+     * @param string $key
+     * @param array  $query
+     *
+     * @return array|bool
+     */
+    public function distinct($key, array $query)
+    {
+        return $this->collection->distinct($key, $query);
+    }
+
+    /**
+     * Return an array of documents with computed results for each group of documents.
+     *
+     * @param string|array|\MongoCode $keys
+     * @param array                   $initial
+     * @param \MongoCode              $reduce
+     * @param array                   $options
+     *
+     * @return array
+     */
+    public function group($keys, array $initial, \MongoCode $reduce, array $options = [])
+    {
+        return $this->collection->group($keys, $initial, $reduce, $options);
     }
 
     /**
@@ -293,43 +359,5 @@ class Collection
         $prop->setAccessible(true);
 
         return $prop;
-    }
-
-    /**
-     * Transfer method call to internal MongoCollection instance and returns its result
-     *
-     * @param string $name
-     * @param array  $arguments
-     *
-     * @return mixed
-     */
-    public function __call($name, $arguments)
-    {
-        return call_user_func_array([$this->collection, $name], $arguments);
-    }
-
-    /**
-     * Return property value from internal MongoCollection instance
-     *
-     * @param string $name
-     *
-     * @return mixed
-     */
-    public function __get($name)
-    {
-        return $this->collection->{$name};
-    }
-
-    /**
-     * Set property value of internal MongoCollection instance
-     *
-     * @param string $name
-     * @param mixed  $value
-     *
-     * @return mixed
-     */
-    public function __set($name, $value)
-    {
-        return $this->collection->{$name} = $value;
     }
 }

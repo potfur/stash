@@ -35,11 +35,10 @@ final class DocumentConverter implements DocumentConverterInterface
 
     /**
      * Constructor
-
      *
-*@param ConverterInterface  $converter
+     * @param ConverterInterface         $converter
      * @param ReferenceResolverInterface $referencer
-     * @param ModelCollection     $models
+     * @param ModelCollection            $models
      */
     public function __construct(ConverterInterface $converter, ReferenceResolverInterface $referencer, ModelCollection $models)
     {
