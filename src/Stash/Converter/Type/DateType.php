@@ -17,10 +17,38 @@ use Stash\Fields;
 /**
  * Date converter
  *
+ * @property \DateTimeZone timezone
  * @package Stash
  */
 final class DateType implements TypeInterface
 {
+    /**
+     * @var \DateTimeZone
+     */
+    private $timezone;
+
+    /**
+     * Constructor
+     *
+     * @param \DateTimeZone|null $timezone
+     */
+    public function __construct(\DateTimeZone $timezone = null)
+    {
+        if ($timezone !== null) {
+            $this->setTimezone($timezone);
+        }
+    }
+
+    /**
+     * Set timezone for all read dates
+     *
+     * @param \DateTimeZone $timezone
+     */
+    public function setTimezone(\DateTimeZone $timezone)
+    {
+        $this->timezone = $timezone;
+    }
+
     /**
      * Return type name
      *
@@ -40,7 +68,7 @@ final class DateType implements TypeInterface
      */
     public function convertToDatabaseValue($value)
     {
-        return $value === null ? null : new \MongoDate($value->getTimestamp());
+        return $value === null ? null : new \MongoDate($value->getTimestamp(), $this->timezone);
     }
 
     /**

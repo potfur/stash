@@ -58,35 +58,9 @@ class ReferenceResolverTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(['$ref' => 'stdclass', '$id' => 1], $result);
     }
 
-    public function testStoreFreshProxy()
+    public function testStore()
     {
         $entity = new Foo(1);
-
-        $proxy = $this->getMock('\ProxyManager\Proxy\VirtualProxyInterface');
-        $proxy->expects($this->any())->method('isProxyInitialized')->willReturn(false);
-        $proxy->expects($this->any())->method('getWrappedValueHolderValue')->willReturn($entity);
-
-        $proxy->expects($this->once())->method('initializeProxy');
-
-        $referencer = new ReferenceResolver($this->models);
-        $referencer->connect($this->connection);
-
-        $result = $referencer->store($proxy);
-
-        $this->assertEquals(['$ref' => 'stdclass', '$id' => 1], $result);
-    }
-
-
-    public function testStoreInitializedProxy()
-    {
-        $entity = new Foo(1);
-
-        $proxy = $this->getMock('\ProxyManager\Proxy\VirtualProxyInterface');
-        $proxy->expects($this->any())->method('isProxyInitialized')->willReturn(true);
-        $proxy->expects($this->any())->method('getWrappedValueHolderValue')->willReturn($entity);
-
-        $proxy->expects($this->never())->method('initializeProxy');
-
 
         $referencer = new ReferenceResolver($this->models);
         $referencer->connect($this->connection);

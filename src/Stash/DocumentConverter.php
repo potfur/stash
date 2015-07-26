@@ -34,17 +34,29 @@ final class DocumentConverter implements DocumentConverterInterface
     private $models;
 
     /**
+     * @var ProxyAdapterInterface
+     */
+    private $proxyAdapter;
+
+    /**
+     * @var bool
+     */
+    private $graceful;
+
+    /**
      * Constructor
      *
      * @param ConverterInterface         $converter
      * @param ReferenceResolverInterface $referencer
      * @param ModelCollection            $models
+     * @param ProxyAdapterInterface      $proxyAdapter
      */
-    public function __construct(ConverterInterface $converter, ReferenceResolverInterface $referencer, ModelCollection $models)
+    public function __construct(ConverterInterface $converter, ReferenceResolverInterface $referencer, ModelCollection $models, ProxyAdapterInterface $proxyAdapter)
     {
         $this->converter = $converter;
         $this->referencer = $referencer;
         $this->models = $models;
+        $this->proxyAdapter = $proxyAdapter;
     }
 
     /**
@@ -58,13 +70,41 @@ final class DocumentConverter implements DocumentConverterInterface
     }
 
     /**
+     * Set graceful mode
+     * If true, will try to convert unknown documents to stdClass objects
+     *
+     * @param bool $graceful
+     */
+    public function setGraceful($graceful)
+    {
+        $this->graceful = (bool) $graceful;
+    }
+
+    /**
      * Convert from document instance into database representation
      *
      * @param object $document
      *
      * @return array
+     * @throws InvalidEntityException
      */
     public function convertToDatabaseValue($document)
+    {
+        if (!is_object($document)) {
+            throw new InvalidEntityException(sprintf('Entity must be an object, got "%s"', gettype($document)));
+        }
+
+        return $this->convertDocumentToDatabaseValue($this->proxyAdapter->getWrappedValue($document));
+    }
+
+    /**
+     * Convert entity to document array
+     *
+     * @param object $document
+     *
+     * @return array
+     */
+    private function convertDocumentToDatabaseValue($document)
     {
         $model = $this->models->getByInstance($document);
         $result = $this->converter->convertToDatabaseValue($document, Fields::TYPE_DOCUMENT);
@@ -81,6 +121,7 @@ final class DocumentConverter implements DocumentConverterInterface
         }
 
         return $result;
+
     }
 
     /**
@@ -95,10 +136,12 @@ final class DocumentConverter implements DocumentConverterInterface
     {
         $array = $this->converter->convertToDatabaseValue($array, Fields::TYPE_ARRAY);
 
-        foreach ($array as &$value) {
-            $value = $this->convertFieldToDatabaseValue($value, $field, $field->getElementType());
-            unset($value);
-        }
+        array_walk(
+            $array,
+            function (&$value) use ($field) {
+                $value = $this->convertFieldToDatabaseValue($value, $field, $field->getElementType());
+            }
+        );
 
         return $array;
     }
@@ -123,7 +166,7 @@ final class DocumentConverter implements DocumentConverterInterface
         }
 
         if ($type === Fields::TYPE_DOCUMENT) {
-            return $this->convertToDatabaseValue($value);
+            return $this->convertDocumentToDatabaseValue($value);
         }
 
         return $this->converter->convertToDatabaseValue($value, $type);
@@ -140,19 +183,19 @@ final class DocumentConverter implements DocumentConverterInterface
     public function convertToPHPValue(array $document)
     {
         if (!isset($document[Fields::KEY_CLASS])) {
-            return $this->convertUnknownObject($document);
-        }
-
-        $model = $this->models->getByClass($document[Fields::KEY_CLASS]);
-
-        foreach ($document as $fieldName => $value) {
-            if ($model->hasField($fieldName)) {
-                $field = $model->getField($fieldName);
-                $document[$fieldName] = $this->convertFieldToPHPValue($value, $field, $field->getType());
+            if($this->graceful) {
+                return $this->convertUnknownObject($document);
             }
+
+            throw new IncompleteDocumentException(sprintf('Incomplete entity document, missing "%s"', Fields::KEY_CLASS));
         }
 
-        return $this->converter->convertToPHPValue($document, Fields::TYPE_DOCUMENT);
+        return $this->proxyAdapter->createProxy(
+            $this->models->getByClass($document[Fields::KEY_CLASS])->getClass(),
+            function () use ($document) {
+                return $this->convertDocumentToPHPValue($document);
+            }
+        );
     }
 
     /**
@@ -177,6 +220,27 @@ final class DocumentConverter implements DocumentConverterInterface
     }
 
     /**
+     * Convert document array to entity
+     *
+     * @param array $document
+     *
+     * @return object
+     */
+    private function convertDocumentToPHPValue(array $document)
+    {
+        $model = $this->models->getByClass($document[Fields::KEY_CLASS]);
+
+        foreach ($document as $fieldName => $value) {
+            if ($model->hasField($fieldName)) {
+                $field = $model->getField($fieldName);
+                $document[$fieldName] = $this->convertFieldToPHPValue($value, $field, $field->getType());
+            }
+        }
+
+        return $this->converter->convertToPHPValue($document, Fields::TYPE_DOCUMENT);
+    }
+
+    /**
      * Convert array of scalars to its PHP representation
      *
      * @param array          $array
@@ -188,10 +252,12 @@ final class DocumentConverter implements DocumentConverterInterface
     {
         $array = $this->converter->convertToPHPValue($array, Fields::TYPE_ARRAY);
 
-        foreach ($array as &$value) {
-            $value = $this->convertFieldToPHPValue($value, $field, $field->getElementType());
-            unset($value);
-        }
+        array_walk(
+            $array,
+            function (&$value) use ($field) {
+                $value = $this->convertFieldToPHPValue($value, $field, $field->getElementType());
+            }
+        );
 
         return $array;
     }
@@ -216,7 +282,7 @@ final class DocumentConverter implements DocumentConverterInterface
         }
 
         if ($type === Fields::TYPE_DOCUMENT) {
-            return $this->convertToPHPValue($value);
+            return $this->convertDocumentToPHPValue($value);
         }
 
         return $this->converter->convertToPHPValue($value, $type);

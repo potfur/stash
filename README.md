@@ -16,65 +16,65 @@ The small, but important, difference here is that instead of returning plain arr
  - references - **done**
  - aggregation can return mapped objects - **done**
  - store datetime as UTC - **done**
+ - ~~split document converter into separate read/write converters~~ converter uses lazy conversion **done**
  - event dispatcher
- - split document converter into separate read/write converters
  
 ## Example
 
-Model definitions
+Model definitions:
 
 ```php
-$models = new ModelCollection();
+$models = new \Stash\ModelCollection();
 $models->register(
-    new Model(
+    new \Stash\Model\Model(
         '\Order',
         [
-            new Id(),
-            new Document('customer'),
-            new ArrayOf('items', Fields::TYPE_DOCUMENT)
+            new \Stash\Converter\Type\Id(),
+            new \Stash\Converter\Type\Document('customer'),
+            new \Stash\Converter\Type\ArrayOf('items', Fields::TYPE_DOCUMENT)
         ]
     ),
     'order'
 );
 
 $models->register(
-    new Model(
+    new \Stash\Model\
         '\OrderItem',
         [
-            new Scalar('name', Fields::TYPE_STRING),
-            new Scalar('amount', Fields::TYPE_INTEGER),
-            new Scalar('cost', Fields::TYPE_INTEGER)
+            new \Stash\Converter\Type\Scalar('name', Fields::TYPE_STRING),
+            new \Stash\Converter\Type\Scalar('amount', Fields::TYPE_INTEGER),
+            new \Stash\Converter\Type\Scalar('cost', Fields::TYPE_INTEGER)
         ]
     )
 );
 
 $models->register(
-    new Model(
+    new \Stash\Model\
         '\Voucher',
         [
-            new Scalar('name', Fields::TYPE_STRING),
-            new Scalar('cost', Fields::TYPE_INTEGER)
+            new \Stash\Converter\Type\Scalar('name', Fields::TYPE_STRING),
+            new \Stash\Converter\Type\Scalar('cost', Fields::TYPE_INTEGER)
         ]
     )
 );
 
 $models->register(
-    new Model(
+    new \Stash\Model\
         '\Customer',
         [
-            new Scalar('name', Fields::TYPE_STRING),
-            new Document('address')
+            new \Stash\Converter\Type\Scalar('name', Fields::TYPE_STRING),
+            new \Stash\Converter\Type\Document('address')
         ]
     )
 );
 
 $models->register(
-    new Model(
+    new \Stash\Model\
         '\CustomerAddress',
         [
-            new Scalar('address', Fields::TYPE_STRING),
-            new Scalar('city', Fields::TYPE_STRING),
-            new Scalar('zip', Fields::TYPE_STRING)
+            new \Stash\Converter\Type\Scalar('address', Fields::TYPE_STRING),
+            new \Stash\Converter\Type\Scalar('city', Fields::TYPE_STRING),
+            new \Stash\Converter\Type\Scalar('zip', Fields::TYPE_STRING)
         ]
     )
 );
@@ -83,10 +83,23 @@ $models->register(
 Database connection:
 
 ```php
-$connection = new Connection(
-    new MongoClient(),
-    new DocumentConverter(new Converter(), $models),
-);
+$types = [
+    new \Stash\Converter\Type\IdType(),
+    new \Stash\Converter\Type\BooleanType(),
+    new \Stash\Converter\Type\IntegerType(),
+    new \Stash\Converter\Type\DecimalType(),
+    new \Stash\Converter\Type\StringType(),
+    new \Stash\Converter\Type\DateType(),
+    new \Stash\Converter\Type\ArrayType(),
+    new \Stash\Converter\Type\DocumentType()
+];
+
+$proxyAdapter = new \Stash\ProxyAdapter();
+$converter = new \Stash\Converter\Converter($types);
+$referencer = new \Stash\ReferenceResolver($models);
+$documentConverter = new \Stash\DocumentConverter($converter, $referencer, $models, $proxyAdapter);
+
+$connection = new \Stash\Connection(new \MongoClient(), $models, $documentConverter);
 $connection->selectDB('test');
 ```
 
@@ -199,4 +212,18 @@ When saving objects (entities), **Stash** adds the `_class` field, where it stor
     }
   ]
 }                                                     
+```
+
+## Configuring proxy
+
+By default, all required proxy classes are generated at runtime.
+Generation uses a lot of reflection and it cause poor performance.
+To prevent this, generated proxy classes can be reused:
+
+```php
+$config = new \ProxyManager\Configuration();
+$config->setProxiesTargetDir(__DIR__ . '/generated/proxy/);
+spl_autoload_register($config->getProxyAutoloader());
+
+$proxyAdapter = new \Stash\ProxyAdapter($config);
 ```

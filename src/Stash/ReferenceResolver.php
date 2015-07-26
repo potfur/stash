@@ -35,11 +35,6 @@ final class ReferenceResolver implements ReferenceResolverInterface
     private $connection;
 
     /**
-     * @var LazyLoadingValueHolderFactory
-     */
-    private $factory;
-
-    /**
      * Constructor
      *
      * @param ModelCollection $models
@@ -47,7 +42,6 @@ final class ReferenceResolver implements ReferenceResolverInterface
     public function __construct(ModelCollection $models)
     {
         $this->models = $models;
-        $this->factory = new LazyLoadingValueHolderFactory();
     }
 
     /**
@@ -69,41 +63,6 @@ final class ReferenceResolver implements ReferenceResolverInterface
      * @throws InvalidEntityException
      */
     public function store($entity)
-    {
-        if ($entity instanceof VirtualProxyInterface) {
-            return $this->getFromProxy($entity);
-        }
-
-        return $this->getFromEntity($entity);
-    }
-
-    /**
-     * Create reference from proxy
-     *
-     * @param VirtualProxyInterface $proxy
-     *
-     * @return array
-     * @throws InvalidEntityException
-     */
-    private function getFromProxy(VirtualProxyInterface $proxy)
-    {
-        if (!$proxy->isProxyInitialized()) {
-            $proxy->initializeProxy();
-        }
-
-        return $this->getFromEntity($proxy->getWrappedValueHolderValue());
-    }
-
-    /**
-     * Create reference from entity
-     *
-     * @param null|object $entity
-     *
-     * @return array
-     * @throws InvalidEntityException
-     * @throws \Stash\Model\ModelException
-     */
-    private function getFromEntity($entity)
     {
         if ($entity === null) {
             return null;
@@ -144,19 +103,9 @@ final class ReferenceResolver implements ReferenceResolverInterface
         $this->assertReference($reference);
         $this->assertConnection($this->connection);
 
-        $proxy = $this->factory->createProxy(
-            $this->models->getByCollection($reference[self::REFERENCE_REF])->getClass(),
-            function (& $wrappedObject, $proxy, $method, $parameters, & $initializer) use ($reference) {
-                $initializer = null;
-                $wrappedObject = $this->connection
-                    ->getCollection($reference[self::REFERENCE_REF])
-                    ->findById($reference[self::REFERENCE_ID]);
-
-                return true;
-            }
-        );
-
-        return $proxy;
+        return $this->connection
+            ->getCollection($reference[self::REFERENCE_REF])
+            ->findById($reference[self::REFERENCE_ID]);
     }
 
     /**

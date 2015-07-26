@@ -97,6 +97,8 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
      */
     public function testSaveInvalidEntity()
     {
+        $this->markTestSkipped();
+
         $collection = $this->getMockBuilder('\MongoCollection')->disableOriginalConstructor()->getMock();
         $collection->expects($this->any())->method('getName')->willReturn('foobar');
 

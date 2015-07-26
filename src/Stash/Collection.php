@@ -104,10 +104,10 @@ class Collection
             return $document;
         }
 
-        $model = $this->models->getByInstance($document);
-        if ($model->getCollection() !== $this->getName()) {
-            throw new InvalidEntityException(sprintf('Entity of "%s" can not be saved in "%s"', $model->getClass(), $this->getName()));
-        }
+//        $model = $this->models->getByInstance($document);
+//        if ($model->getCollection() !== $this->getName()) {
+//            throw new InvalidEntityException(sprintf('Entity of "%s" can not be saved in "%s"', $model->getClass(), $this->getName()));
+//        }
 
         $document = $this->converter->convertToDatabaseValue($document);
 
@@ -257,7 +257,7 @@ class Collection
      *
      * @return array|bool
      */
-    public function distinct($key, array $query)
+    public function distinct($key, array $query = [])
     {
         return $this->collection->distinct($key, $query);
     }
@@ -265,7 +265,7 @@ class Collection
     /**
      * Return an array of documents with computed results for each group of documents.
      *
-     * @param string|array|\MongoCode $keys
+     * @param array|object|\MongoCode $keys
      * @param array                   $initial
      * @param \MongoCode              $reduce
      * @param array                   $options
@@ -274,7 +274,12 @@ class Collection
      */
     public function group($keys, array $initial, \MongoCode $reduce, array $options = [])
     {
-        return $this->collection->group($keys, $initial, $reduce, $options);
+        $result = $this->collection->group($keys, $initial, $reduce, array_merge(['condition' => [], $options]));
+        if (!$this->isOk($result)) {
+            return false;
+        }
+
+        return $result;
     }
 
     /**

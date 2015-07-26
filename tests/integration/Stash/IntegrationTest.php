@@ -29,6 +29,11 @@ use Stash\Model\Model;
 class IntegrationTest extends \PHPUnit_Framework_TestCase
 {
     /**
+     * @var \MongoClient
+     */
+    private $mongo;
+
+    /**
      * @var ModelCollection
      */
     private $models;
@@ -48,14 +53,11 @@ class IntegrationTest extends \PHPUnit_Framework_TestCase
      */
     private $entity;
 
-    /**
-     * Initializes connection and clears test database
-     *
-     * @param Model $model
-     */
-    private function initialize(Model $model)
+    public function setUp()
     {
-        $this->models = new ModelCollection([$model]);
+        $this->mongo = new \MongoClient();
+
+        $this->models = new ModelCollection();
 
         $types = [
             new IdType(),
@@ -70,10 +72,11 @@ class IntegrationTest extends \PHPUnit_Framework_TestCase
 
         $converter = new Converter($types);
         $referencer = new ReferenceResolver($this->models);
+        $proxyAdapter = new ProxyAdapter();
 
-        $this->converter = new DocumentConverter($converter, $referencer, $this->models);
+        $this->converter = new DocumentConverter($converter, $referencer, $this->models, $proxyAdapter);
 
-        $this->connection = new Connection(new \MongoClient(), $this->models, $this->converter);
+        $this->connection = new Connection($this->mongo, $this->models, $this->converter);
         $this->connection->selectDB('test');
 
         $this->connection->getCollection('foo')->remove();
@@ -81,9 +84,92 @@ class IntegrationTest extends \PHPUnit_Framework_TestCase
         $this->entity = new Foo(null, 'foo bar');
     }
 
+    public function testFind()
+    {
+        $this->mongo->selectDB('test')->selectCollection('foo')->insert(
+            [
+                '_class' => '\Fake\Foo',
+                'field' => 'foo'
+            ]
+        );
+
+        $this->models->register(
+            new Model(
+                '\Fake\Foo',
+                [
+                    new Id(),
+                    new Scalar('field', Fields::TYPE_STRING),
+                ],
+                'foo'
+            )
+        );
+
+        $result = $this->connection->getCollection('foo')->find();
+
+        foreach ($result as $element) {
+            $this->assertInstanceOf('\Fake\Foo', $element);
+            $this->assertEquals('foo', $element->field);
+        }
+    }
+
+    public function testFindOne()
+    {
+        $this->mongo->selectDB('test')->selectCollection('foo')->insert(
+            [
+                '_class' => '\Fake\Foo',
+                'field' => 'foo'
+            ]
+        );
+
+        $this->models->register(
+            new Model(
+                '\Fake\Foo',
+                [
+                    new Id(),
+                    new Scalar('field', Fields::TYPE_STRING),
+                ],
+                'foo'
+            )
+        );
+
+        $result = $this->connection->getCollection('foo')->findOne();
+
+        $this->assertInstanceOf('\Fake\Foo', $result);
+        $this->assertEquals('foo', $result->field);
+    }
+
+    public function testFindById()
+    {
+        $this->mongo->selectDB('test')->selectCollection('foo')->insert(
+            [
+                '_id' => 1,
+                '_class' => '\Fake\Foo',
+                'field' => 'foo'
+            ]
+        );
+
+        $this->models->register(
+            new Model(
+                '\Fake\Foo',
+                [
+                    new Id(),
+                    new Scalar('field', Fields::TYPE_STRING),
+                ],
+                'foo'
+            )
+        );
+
+        $result = $this->connection->getCollection('foo')->findById(1);
+
+        foreach ($result as $element) {
+            $this->assertInstanceOf('\Fake\Foo', $element);
+            $this->assertEquals('foo', $element->field);
+        }
+    }
+
     public function testInsert()
     {
-        $this->initialize(
+        $this->models->register(
             new Model(
                 '\Fake\Foo',
                 [
@@ -98,12 +184,13 @@ class IntegrationTest extends \PHPUnit_Framework_TestCase
         $foo->insert($this->entity);
         $result = $foo->findOne();
 
-        $this->assertEquals($this->entity, $result);
+        $this->assertInstanceOf('\Fake\Foo', $result);
+        $this->assertEquals($this->entity->_id, $result->_id);
     }
 
     public function testSaveWhenInsertingEntity()
     {
-        $this->initialize(
+        $this->models->register(
             new Model(
                 '\Fake\Foo',
                 [
@@ -118,12 +205,13 @@ class IntegrationTest extends \PHPUnit_Framework_TestCase
         $foo->save($this->entity);
         $result = $foo->findOne();
 
-        $this->assertEquals($this->entity, $result);
+        $this->assertInstanceOf('\Fake\Foo', $result);
+        $this->assertEquals($this->entity->_id, $result->_id);
     }
 
     public function testSaveWhenUpdatingEntity()
     {
-        $this->initialize(
+        $this->models->register(
             new Model(
                 '\Fake\Foo',
                 [
@@ -140,14 +228,16 @@ class IntegrationTest extends \PHPUnit_Framework_TestCase
         $result = $foo->find();
 
         $this->assertEquals(1, $result->count());
+
         foreach ($result as $element) {
-            $this->assertEquals($this->entity, $element);
+            $this->assertInstanceOf('\Fake\Foo', $element);
+            $this->assertEquals($this->entity->_id, $element->_id);
         }
     }
 
     public function testReference()
     {
-        $this->initialize(
+        $this->models->register(
             new Model(
                 '\Fake\Foo',
                 [
@@ -174,7 +264,7 @@ class IntegrationTest extends \PHPUnit_Framework_TestCase
 
     public function testLoopedReference()
     {
-        $this->initialize(
+        $this->models->register(
             new Model(
                 '\Fake\Foo',
                 [
@@ -202,4 +292,118 @@ class IntegrationTest extends \PHPUnit_Framework_TestCase
         $this->assertInstanceOf('\Fake\Foo', $result);
         $this->assertEquals($entityB->_id, $result->_id);
     }
+
+    public function testRemoveByCriteria()
+    {
+        $this->mongo->selectDB('test')->selectCollection('foo')->insert(
+            [
+                '_id' => 1,
+                '_class' => '\Fake\Foo',
+                'field' => 'foo'
+            ]
+        );
+
+        $this->connection->getCollection('foo')->remove(['_id' => 1]);
+        $result = $this->connection->getCollection('foo')->find()->count();
+
+        $this->assertEquals(0, $result);
+    }
+
+    public function testRemoveEntity()
+    {
+        $this->mongo->selectDB('test')->selectCollection('foo')->insert(
+            [
+                '_id' => 1,
+                '_class' => '\Fake\Foo',
+                'field' => 'foo'
+            ]
+        );
+
+        $entity = new Foo(1);
+
+        $this->connection->getCollection('foo')->remove($entity);
+        $result = $this->connection->getCollection('foo')->find()->count();
+
+        $this->assertEquals(0, $result);
+    }
+
+    public function testAggregateRaw()
+    {
+        $this->markTestIncomplete();
+    }
+
+    public function testAggregateWithObject()
+    {
+        $this->markTestIncomplete();
+    }
+
+    public function testCount()
+    {
+        $this->mongo->selectDB('test')->selectCollection('foo')->batchInsert(
+            [
+                ['field' => 1],
+                ['field' => 2],
+                ['field' => 3],
+                ['field' => 4]
+            ]
+        );
+
+        $entity = new Foo(1);
+
+        $this->connection->getCollection('foo')->remove($entity);
+        $result = $this->connection->getCollection('foo')->count(['field' => ['$exists' => 1, '$gt' => 2]]);
+
+        $this->assertEquals(2, $result);
+    }
+
+    public function testDistinct()
+    {
+        $this->mongo->selectDB('test')->selectCollection('foo')->batchInsert(
+            [
+                ['field' => 1],
+                ['field' => 1],
+                ['field' => 2],
+                ['field' => 2]
+            ]
+        );
+
+        $entity = new Foo(1);
+
+        $this->connection->getCollection('foo')->remove($entity);
+        $result = $this->connection->getCollection('foo')->distinct('field', []);
+
+        $this->assertEquals([1, 2], sort($result));
+    }
+
+    public function testGroup()
+    {
+        $this->mongo->selectDB('test')->selectCollection('foo')->batchInsert(
+            [
+                ['field' => 1],
+                ['field' => 1],
+                ['field' => 2],
+                ['field' => 2]
+            ]
+        );
+
+        $entity = new Foo(1);
+
+        $this->connection->getCollection('foo')->remove($entity);
+        $result = $this->connection->getCollection('foo')->group(
+            [],
+            ['count' => 0],
+            new \MongoCode('function(elem, agg) { agg.count++ }'),
+            []
+        );
+
+        $expected = [
+            'retval' => [['count' => 4]],
+            'count' => 4,
+            'keys' => 1,
+            'ok' => 1
+        ];
+
+        $this->assertEquals($expected, $result);
+    }
+
 }
