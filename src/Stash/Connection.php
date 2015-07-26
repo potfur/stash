@@ -29,11 +29,6 @@ class Connection
     private $database;
 
     /**
-     * @var ModelCollection
-     */
-    private $models;
-
-    /**
      * @var DocumentConverterInterface
      */
     private $converter;
@@ -47,13 +42,11 @@ class Connection
      * Constructor
      *
      * @param \MongoClient               $client
-     * @param ModelCollection            $models
      * @param DocumentConverterInterface $converter
      */
-    public function __construct(\MongoClient $client, ModelCollection $models, DocumentConverterInterface $converter)
+    public function __construct(\MongoClient $client, DocumentConverterInterface $converter)
     {
         $this->client = $client;
-        $this->models = $models;
         $this->converter = $converter;
 
         $this->converter->connect($this);
@@ -84,7 +77,6 @@ class Connection
 
         return $this->buffer[$collection] = new Collection(
             $this->database->selectCollection($collection),
-            $this->models,
             $this->converter
         );
     }

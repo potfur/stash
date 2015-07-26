@@ -183,7 +183,7 @@ final class DocumentConverter implements DocumentConverterInterface
     public function convertToPHPValue(array $document)
     {
         if (!isset($document[Fields::KEY_CLASS])) {
-            if($this->graceful) {
+            if ($this->graceful) {
                 return $this->convertUnknownObject($document);
             }
 

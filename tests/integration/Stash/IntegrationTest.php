@@ -76,7 +76,7 @@ class IntegrationTest extends \PHPUnit_Framework_TestCase
 
         $this->converter = new DocumentConverter($converter, $referencer, $this->models, $proxyAdapter);
 
-        $this->connection = new Connection($this->mongo, $this->models, $this->converter);
+        $this->connection = new Connection($this->mongo, $this->converter);
         $this->connection->selectDB('test');
 
         $this->connection->getCollection('foo')->remove();

@@ -25,11 +25,6 @@ class Collection
     private $collection;
 
     /**
-     * @var ModelCollection
-     */
-    private $models;
-
-    /**
      * @var DocumentConverterInterface
      */
     private $converter;
@@ -38,13 +33,11 @@ class Collection
      * Constructor
      *
      * @param \MongoCollection           $collection
-     * @param ModelCollection            $models
      * @param DocumentConverterInterface $converter
      */
-    public function __construct(\MongoCollection $collection, ModelCollection $models, DocumentConverterInterface $converter)
+    public function __construct(\MongoCollection $collection, DocumentConverterInterface $converter)
     {
         $this->collection = $collection;
-        $this->models = $models;
         $this->converter = $converter;
     }
 
@@ -103,11 +96,6 @@ class Collection
         if (!is_object($document)) {
             return $document;
         }
-
-//        $model = $this->models->getByInstance($document);
-//        if ($model->getCollection() !== $this->getName()) {
-//            throw new InvalidEntityException(sprintf('Entity of "%s" can not be saved in "%s"', $model->getClass(), $this->getName()));
-//        }
 
         $document = $this->converter->convertToDatabaseValue($document);
 

@@ -30,11 +30,6 @@ class ConnectionTest extends \PHPUnit_Framework_TestCase
     private $client;
 
     /**
-     * @var ModelCollection|\PHPUnit_Framework_MockObject_MockObject
-     */
-    private $models;
-
-    /**
      * @var DocumentConverterInterface|\PHPUnit_Framework_MockObject_MockObject
      */
     private $converter;
@@ -50,14 +45,12 @@ class ConnectionTest extends \PHPUnit_Framework_TestCase
         $this->client = $this->getMockBuilder('\MongoClient')->disableOriginalConstructor()->getMock();
         $this->client->expects($this->any())->method('selectDB')->willReturn($this->database);
 
-        $this->models = $this->getMock('\Stash\ModelCollection');
-
         $this->converter = $this->getMock('\Stash\DocumentConverterInterface');
     }
 
     public function testGetCollection()
     {
-        $connection = new Connection($this->client, $this->models, $this->converter);
+        $connection = new Connection($this->client, $this->converter);
         $connection->selectDB('test');
 
         $result = $connection->getCollection('test');
@@ -68,7 +61,7 @@ class ConnectionTest extends \PHPUnit_Framework_TestCase
 
     public function testGetBufferedCollection()
     {
-        $connection = new Connection($this->client, $this->models, $this->converter);
+        $connection = new Connection($this->client, $this->converter);
         $connection->selectDB('test');
 
         $resultA = $connection->getCollection('test');

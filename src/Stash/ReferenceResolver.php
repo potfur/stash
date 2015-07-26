@@ -11,9 +11,6 @@
 
 namespace Stash;
 
-use ProxyManager\Factory\LazyLoadingValueHolderFactory;
-use ProxyManager\Proxy\VirtualProxyInterface;
-
 /**
  * Lazy loading reference resolver
  *

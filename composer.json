@@ -1,6 +1,5 @@
 {
   "name": "potfur/stash",
-  "version": "v0.3",
   "description": "Stash: Mongo ODM",
   "keywords": [
     "document",
