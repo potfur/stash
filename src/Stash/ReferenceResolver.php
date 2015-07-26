@@ -151,6 +151,8 @@ final class ReferenceResolver implements ReferenceResolverInterface
                 $wrappedObject = $this->connection
                     ->getCollection($reference[self::REFERENCE_REF])
                     ->findById($reference[self::REFERENCE_ID]);
+
+                return true;
             }
         );
 

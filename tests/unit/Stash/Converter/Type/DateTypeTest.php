@@ -20,7 +20,7 @@ class DateTypeTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @dataProvider phpValueProvider
+     * @dataProvider dateProvider
      */
     public function testConvertToDatabaseValue($value, $expected)
     {
@@ -29,35 +29,20 @@ class DateTypeTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @dataProvider databaseValueProvider
+     * @dataProvider dateProvider
      */
-    public function testConvertToPHPValue($value, $expected)
+    public function testConvertToPHPValue($expected, $value)
     {
         $type = new DateType();
         $this->assertEquals($expected, $type->convertToPHPValue($value));
     }
 
-    public function phpValueProvider()
+    public function dateProvider()
     {
-        $date = date('Y-m-d H:i:s');
-        $datetime = new \DateTime($date);
-        $mongodate = new \MongoDate(strtotime($date));
-
         return [
             [null, null],
-            [$datetime, $mongodate],
-        ];
-    }
-
-    public function databaseValueProvider()
-    {
-        $date = date('Y-m-d H:i:s');
-        $datetime = new \DateTime($date);
-        $mongodate = new \MongoDate(strtotime($date));
-
-        return [
-            [null, null],
-            [$mongodate, $datetime],
+            [new \DateTime('2015-07-26 14:16:00', new \DateTimeZone('UTC')), new \MongoDate(strtotime('2015-07-26 14:16:00'))],
+            [new \DateTime('2015-07-26 16:16:00', new \DateTimeZone('Europe/Berlin')), new \MongoDate(strtotime('2015-07-26 14:16:00'))],
         ];
     }
 }

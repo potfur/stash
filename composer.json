@@ -17,7 +17,7 @@
     }
   ],
   "require": {
-    "php": ">=5.4",
+    "php": ">=5.5.9|~7.0",
     "ext-mongo": "*",
     "ocramius/proxy-manager": "1.0.*"
   },

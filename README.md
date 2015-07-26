@@ -1,5 +1,10 @@
 # Stash - MongoDB ODM
 
+[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/potfur/stash/badges/quality-score.png?b=dev)](https://scrutinizer-ci.com/g/potfur/stash/?branch=dev)
+[![Code Coverage](https://scrutinizer-ci.com/g/potfur/stash/badges/coverage.png?b=dev)](https://scrutinizer-ci.com/g/potfur/stash/?branch=dev)
+[![Build Status](https://scrutinizer-ci.com/g/potfur/stash/badges/build.png?b=dev)](https://scrutinizer-ci.com/g/potfur/stash/build-status/dev)
+[![License](https://poser.pugx.org/potfur/stash/license.svg)](https://packagist.org/packages/potfur/stash)
+
 **Stash** is an object-document mapper for MongoDB written in PHP.
 It adds a fully transparent persistence layer while still preserving MongoDB's ease of use and way of handling data.
 
@@ -8,9 +13,11 @@ The small, but important, difference here is that instead of returning plain arr
 
 ## Future Roadmap
 
- - references - *done*
- - store datetime as UTC
+ - references - **done**
+ - aggregation can return mapped objects - **done**
+ - store datetime as UTC - **done**
  - event dispatcher
+ - split document converter into separate read/write converters
  
 ## Example
 
