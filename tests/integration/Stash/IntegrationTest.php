@@ -372,7 +372,8 @@ class IntegrationTest extends \PHPUnit_Framework_TestCase
         $this->connection->getCollection('foo')->remove($entity);
         $result = $this->connection->getCollection('foo')->distinct('field', []);
 
-        $this->assertEquals([1, 2], sort($result));
+        sort($result);
+        $this->assertEquals([1, 2], $result);
     }
 
     public function testGroup()
