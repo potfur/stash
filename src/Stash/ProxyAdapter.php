@@ -11,7 +11,6 @@
 
 namespace Stash;
 
-use ProxyManager\Configuration;
 use ProxyManager\Factory\LazyLoadingValueHolderFactory;
 use ProxyManager\Proxy\VirtualProxyInterface;
 
@@ -30,11 +29,11 @@ final class ProxyAdapter implements ProxyAdapterInterface
     /**
      * Constructor
      *
-     * @param Configuration $configuration
+     * @param LazyLoadingValueHolderFactory $factory
      */
-    public function __construct(Configuration $configuration = null)
+    public function __construct(LazyLoadingValueHolderFactory $factory)
     {
-        $this->factory = new LazyLoadingValueHolderFactory($configuration);
+        $this->factory = $factory;
     }
 
     /**
@@ -89,5 +88,4 @@ final class ProxyAdapter implements ProxyAdapterInterface
             }
         );
     }
-
 }

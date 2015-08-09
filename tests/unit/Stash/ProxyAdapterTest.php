@@ -20,7 +20,9 @@ class ProxyAdapterTest extends \PHPUnit_Framework_TestCase
     {
         $object = $this->getMock('\ProxyManager\Proxy\VirtualProxyInterface');
 
-        $adapter = new ProxyAdapter();
+        $factory = $this->getMockBuilder('\ProxyManager\Factory\LazyLoadingValueHolderFactory')->disableOriginalConstructor()->getMock();
+        $adapter = new ProxyAdapter($factory);
+
         $this->assertTrue($adapter->isProxy($object));
     }
 
@@ -28,7 +30,9 @@ class ProxyAdapterTest extends \PHPUnit_Framework_TestCase
     {
         $object = new \stdClass();
 
-        $adapter = new ProxyAdapter();
+        $factory = $this->getMockBuilder('\ProxyManager\Factory\LazyLoadingValueHolderFactory')->disableOriginalConstructor()->getMock();
+        $adapter = new ProxyAdapter($factory);
+
         $this->assertFalse($adapter->isProxy($object));
     }
 
@@ -36,7 +40,9 @@ class ProxyAdapterTest extends \PHPUnit_Framework_TestCase
     {
         $object = new \stdClass();
 
-        $adapter = new ProxyAdapter();
+        $factory = $this->getMockBuilder('\ProxyManager\Factory\LazyLoadingValueHolderFactory')->disableOriginalConstructor()->getMock();
+        $adapter = new ProxyAdapter($factory);
+
         $this->assertSame($object, $adapter->getWrappedValue($object));
     }
 
@@ -49,7 +55,9 @@ class ProxyAdapterTest extends \PHPUnit_Framework_TestCase
         $proxy->expects($this->never())->method('initializeProxy');
         $proxy->expects($this->once())->method('getWrappedValueHolderValue')->willReturn($object);
 
-        $adapter = new ProxyAdapter();
+        $factory = $this->getMockBuilder('\ProxyManager\Factory\LazyLoadingValueHolderFactory')->disableOriginalConstructor()->getMock();
+        $adapter = new ProxyAdapter($factory);
+
         $this->assertSame($object, $adapter->getWrappedValue($proxy));
     }
 
@@ -62,24 +70,27 @@ class ProxyAdapterTest extends \PHPUnit_Framework_TestCase
         $proxy->expects($this->once())->method('initializeProxy');
         $proxy->expects($this->once())->method('getWrappedValueHolderValue')->willReturn($object);
 
-        $adapter = new ProxyAdapter();
+        $factory = $this->getMockBuilder('\ProxyManager\Factory\LazyLoadingValueHolderFactory')->disableOriginalConstructor()->getMock();
+        $adapter = new ProxyAdapter($factory);
+
         $this->assertSame($object, $adapter->getWrappedValue($proxy));
     }
 
     public function testCreateProxy()
     {
-        $object = new \stdClass();
-        $initializer = function () use ($object) {
-            return $object;
-        };
+        $className = '\stdClass';
+        $initializer = function () { };
 
-        $adapter = new ProxyAdapter();
-        $proxy = $adapter->createProxy('\stdClass', $initializer);
+        $proxy = $this->getMock('\ProxyManager\Proxy\VirtualProxyInterface');
+        $proxy->expects($this->any())->method('initializeProxy')->willReturn(true);
 
-        $this->assertInstanceOf('\stdClass', $proxy);
-        $this->assertInstanceOf('\ProxyManager\Proxy\VirtualProxyInterface', $proxy);
+        $factory = $this->getMockBuilder('\ProxyManager\Factory\LazyLoadingValueHolderFactory')->disableOriginalConstructor()->getMock();
+        $factory->expects($this->once())->method('createProxy')->with($className, $initializer)->willReturn($proxy);
 
-        $proxy->initializeProxy();
-        $this->assertSame($object, $proxy->getWrappedValueHolderValue());
+        $adapter = new ProxyAdapter($factory);
+        $result = $adapter->createProxy($className, $initializer);
+
+        $this->assertInstanceOf('\ProxyManager\Proxy\VirtualProxyInterface', $result);
+        $this->assertTrue($proxy->initializeProxy());
     }
 }

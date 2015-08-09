@@ -13,6 +13,7 @@ namespace Stash;
 
 
 use Fake\Foo;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 class CollectionTest extends \PHPUnit_Framework_TestCase
 {
@@ -26,6 +27,11 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
      */
     private $converter;
 
+    /**
+     * @var EventDispatcherInterface|\PHPUnit_Framework_MockObject_MockObject
+     */
+    private $dispatcher;
+
     public function setUp()
     {
         $this->collection = $this->getMockBuilder('\MongoCollection')->disableOriginalConstructor()->getMock();
@@ -36,14 +42,23 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
         $model->expects($this->any())->method('getCollection')->willReturn('stdclass');
 
         $this->converter = $this->getMock('\Stash\DocumentConverterInterface');
+
+        $this->dispatcher = $this->getMock('\Symfony\Component\EventDispatcher\EventDispatcherInterface');
+    }
+
+    public function testGetName()
+    {
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
+        $this->assertEquals('stdclass', $collection->getName());
     }
 
     public function testInsertFail()
     {
         $this->converter->expects($this->any())->method('convertToDatabaseValue')->willReturn(['field' => 'foo']);
         $this->collection->expects($this->any())->method('insert')->with(['field' => 'foo'], [])->willReturn(null);
+        $this->dispatcher->expects($this->once())->method('dispatch')->with(Events::PERSIST_BEFORE, $this->isInstanceOf('\Stash\Event'));
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
         $this->assertFalse($collection->insert(new Foo(null, 'foo'), []));
     }
 
@@ -51,8 +66,12 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
     {
         $this->converter->expects($this->once())->method('convertToDatabaseValue')->willReturn(['field' => 'foo']);
         $this->collection->expects($this->once())->method('insert')->with(['field' => 'foo'], [])->willReturn(['ok' => 1]);
+        $this->dispatcher->expects($this->exactly(2))->method('dispatch')->withConsecutive(
+            [Events::PERSIST_BEFORE, $this->isInstanceOf('\Stash\Event')],
+            [Events::PERSIST_AFTER, $this->isInstanceOf('\Stash\Event')]
+        );
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
         $collection->insert(new Foo(null, 'foo'), []);
     }
 
@@ -60,8 +79,9 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
     {
         $this->converter->expects($this->any())->method('convertToDatabaseValue')->willReturn(['field' => 'foo']);
         $this->collection->expects($this->any())->method('insert')->with(['field' => 'foo'], [])->willReturn(null);
+        $this->dispatcher->expects($this->once())->method('dispatch')->with(Events::PERSIST_BEFORE, $this->isInstanceOf('\Stash\Event'));
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
         $this->assertFalse($collection->save(new Foo(null, 'foo'), []));
     }
 
@@ -69,18 +89,13 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
     {
         $this->converter->expects($this->once())->method('convertToDatabaseValue')->willReturn(['field' => 'foo']);
         $this->collection->expects($this->once())->method('save')->with(['field' => 'foo'], [])->willReturn(['ok' => 1]);
+        $this->dispatcher->expects($this->exactly(2))->method('dispatch')->withConsecutive(
+            [Events::PERSIST_BEFORE, $this->isInstanceOf('\Stash\Event')],
+            [Events::PERSIST_AFTER, $this->isInstanceOf('\Stash\Event')]
+        );
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
         $collection->save(new Foo(null, 'foo'), []);
-    }
-
-    public function testSaveArray()
-    {
-        $this->converter->expects($this->never())->method('convertToDatabaseValue');
-        $this->collection->expects($this->once())->method('save')->with(['field' => 'foo'], [])->willReturn(['ok' => 1]);
-
-        $collection = new Collection($this->collection, $this->converter);
-        $collection->save(['field' => 'foo'], []);
     }
 
     /**
@@ -91,7 +106,7 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
         $this->converter->expects($this->any())->method('convertToDatabaseValue')->willReturn(['_id' => new \MongoId()]);
         $this->collection->expects($this->any())->method('insert')->willReturn(['ok' => 1]);
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
         $collection->insert($entity, []);
 
         $this->assertInstanceOf('\MongoId', $entity->_id);
@@ -105,7 +120,7 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
         $this->converter->expects($this->any())->method('convertToDatabaseValue')->willReturn(['_id' => new \MongoId()]);
         $this->collection->expects($this->any())->method('save')->willReturn(['ok' => 1]);
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
         $collection->save($entity, []);
 
         $this->assertInstanceOf('\MongoId', $entity->_id);
@@ -125,37 +140,89 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
 
         $this->collection->expects($this->once())->method('find')->with(['foo' => 'bar'], [])->willReturn($cursor);
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
         $collection->find(['foo' => 'bar']);
     }
 
     public function testFindOne()
     {
-        $this->collection->expects($this->once())->method('findOne')->with(['foo' => 'bar'], [])->willReturn(['yada' => 'foo']);
-        $this->converter->expects($this->once())->method('convertToPHPValue')->with(['yada' => 'foo']);
+        $entity = new \stdClass();
 
-        $collection = new Collection($this->collection, $this->converter);
-        $collection->findOne(['foo' => 'bar']);
+        $this->collection->expects($this->once())->method('findOne')->with(['foo' => 'bar'], [])->willReturn(['yada' => 'foo']);
+        $this->converter->expects($this->once())->method('convertToPHPValue')->with(['yada' => 'foo'])->willReturn($entity);
+        $this->dispatcher->expects($this->once())->method('dispatch')->with(Events::FIND_AFTER, $this->isInstanceOf('\Stash\Event'));
+
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
+        $result = $collection->findOne(['foo' => 'bar']);
+
+        $this->assertSame($entity, $result);
+    }
+
+    public function testNotFoundOne()
+    {
+        $this->collection->expects($this->once())->method('findOne')->with(['foo' => 'bar'], [])->willReturn(null);
+        $this->converter->expects($this->never())->method('convertToPHPValue');
+        $this->dispatcher->expects($this->never())->method('dispatch');
+
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
+        $result = $collection->findOne(['foo' => 'bar']);
+
+        $this->assertNull($result);
     }
 
     public function testFindById()
     {
+        $entity = new \stdClass();
+        $entity->_id = new \MongoId();
+
+        $this->collection->expects($this->once())->method('findOne')->with(['_id' => $entity->_id], [])->willReturn(['yada' => 'foo']);
+        $this->converter->expects($this->once())->method('convertToPHPValue')->with(['yada' => 'foo'])->willReturn($entity);
+        $this->dispatcher->expects($this->once())->method('dispatch')->with(Events::FIND_AFTER, $this->isInstanceOf('\Stash\Event'));
+
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
+        $result = $collection->findById($entity->_id);
+
+        $this->assertSame($entity, $result);
+    }
+
+    public function testNotFoundById()
+    {
         $id = new \MongoId();
 
-        $this->collection->expects($this->once())->method('findOne')->with(['_id' => $id], [])->willReturn(['yada' => 'foo']);
-        $this->converter->expects($this->once())->method('convertToPHPValue')->with(['yada' => 'foo']);
+        $this->collection->expects($this->once())->method('findOne')->with(['_id' => $id], [])->willReturn(null);
+        $this->converter->expects($this->never())->method('convertToPHPValue');
+        $this->dispatcher->expects($this->never())->method('dispatch');
 
-        $collection = new Collection($this->collection, $this->converter);
-        $collection->findById($id);
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
+        $result = $collection->findById($id);
+
+        $this->assertNull($result);
     }
 
     public function testFindAndModify()
     {
-        $this->collection->expects($this->once())->method('findAndModify')->with(['foo' => 'bar'], ['foo' => 'yada'])->willReturn(['foo' => 'yada']);
-        $this->converter->expects($this->once())->method('convertToPHPValue')->with(['foo' => 'yada']);
+        $entity = new \stdClass();
 
-        $collection = new Collection($this->collection, $this->converter);
-        $collection->findAndModify(['foo' => 'bar'], ['foo' => 'yada']);
+        $this->collection->expects($this->once())->method('findAndModify')->with(['foo' => 'bar'], ['foo' => 'yada'])->willReturn(['foo' => 'yada']);
+        $this->converter->expects($this->once())->method('convertToPHPValue')->with(['foo' => 'yada'])->willReturn($entity);
+        $this->dispatcher->expects($this->once())->method('dispatch')->with(Events::FIND_AFTER, $this->isInstanceOf('\Stash\Event'));
+
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
+        $result = $collection->findAndModify(['foo' => 'bar'], ['foo' => 'yada']);
+
+        $this->assertEquals($entity, $result);
+    }
+
+    public function testNotFoundAndModified()
+    {
+        $this->collection->expects($this->once())->method('findAndModify')->with(['foo' => 'bar'], ['foo' => 'yada'])->willReturn(null);
+        $this->converter->expects($this->never())->method('convertToPHPValue');
+        $this->dispatcher->expects($this->never())->method('dispatch');
+
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
+        $result = $collection->findAndModify(['foo' => 'bar'], ['foo' => 'yada']);
+
+        $this->assertNull($result);
     }
 
     public function testAggregateFails()
@@ -167,7 +234,7 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
             ]
         );
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
         $result = $collection->aggregate(['foo' => 'bar'], ['foo' => 'yada']);
 
         $this->assertFalse($result);
@@ -186,7 +253,7 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
         );
         $this->converter->expects($this->never())->method('convertToPHPValue');
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
         $collection->aggregate(['foo' => 'bar'], ['foo' => 'yada']);
     }
 
@@ -206,7 +273,7 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
             [['_id' => ['tags' => 'fun'], '_class' => '\stdClass', 'authors' => ['bob']]]
         );
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
         $collection->aggregate(['foo' => 'bar'], ['foo' => 'yada'], '\stdClass');
     }
 
@@ -214,7 +281,7 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
     {
         $this->collection->expects($this->once())->method('count')->with(['foo' => 'bar'], ['foo' => 'yada'])->willReturn(1);
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
         $collection->count(['foo' => 'bar'], ['foo' => 'yada']);
     }
 
@@ -222,7 +289,7 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
     {
         $this->collection->expects($this->once())->method('distinct')->with(['foo'], ['foo' => 'yada'])->willReturn(['foo', 'bar']);
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
         $collection->distinct(['foo'], ['foo' => 'yada']);
     }
 
@@ -231,23 +298,51 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
         $keys = ['foo' => 1];
         $initial = ['items' => []];
         $reduce = new \MongoCode("function (obj, prev) { prev.items.push(obj.name); }");
+        $expected = [
+            'retval' => [
+                ['category' => 'fruit', 'items' => ['apple', 'peach', 'banana']],
+                ['category' => 'veggie', 'items' => ['corn', 'broccoli']]
+            ],
+            'count' => 2,
+            'keys' => 2,
+            'ok' => 1
+        ];
+
+        $this->collection->expects($this->once())->method('group')->with($keys, $initial, $reduce)->willReturn($expected);
+
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
+        $result = $collection->group($keys, $initial, $reduce);
+
+        $this->assertEquals($expected, $result);
+    }
+
+    public function testGroupError()
+    {
+        $keys = ['foo' => 1];
+        $initial = ['items' => []];
+        $reduce = new \MongoCode("function (obj, prev) { prev.items.push(obj.name); }");
 
         $this->collection->expects($this->once())->method('group')->with($keys, $initial, $reduce)->willReturn(
             [
-                ['category' => 'fruit', 'items' => ['apple', 'peach', 'banana']],
-                ['category' => 'veggie', 'items' => ['corn', 'broccoli']]
+                'retval' => [],
+                'count' => 0,
+                'keys' => 0,
+                'ok' => 0
             ]
         );
 
-        $collection = new Collection($this->collection, $this->converter);
-        $collection->group($keys, $initial, $reduce);
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
+        $result = $collection->group($keys, $initial, $reduce);
+
+        $this->assertFalse($result);
     }
 
     public function testRemove()
     {
         $this->collection->expects($this->once())->method('remove')->with(['foo' => 'bar'], []);
+        $this->dispatcher->expects($this->never())->method('dispatch');
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
         $collection->remove(['foo' => 'bar']);
     }
 
@@ -259,7 +354,7 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
     {
         $entity = new \stdClass();
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
         $collection->remove($entity);
     }
 
@@ -271,7 +366,7 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
     {
         $entity = new Foo();
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
         $collection->remove($entity);
     }
 
@@ -281,8 +376,9 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
         $entity = new Foo($id);
 
         $this->collection->expects($this->once())->method('remove')->with(['_id' => $id], []);
+        $this->dispatcher->expects($this->once())->method('dispatch')->with(Events::REMOVE_BEFORE, $this->isInstanceOf('\Stash\Event'));
 
-        $collection = new Collection($this->collection, $this->converter);
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
         $collection->remove($entity);
     }
 }

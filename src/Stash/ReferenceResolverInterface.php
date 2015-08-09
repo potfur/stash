@@ -28,7 +28,7 @@ interface ReferenceResolverInterface
     /**
      * Store reference in database format
      *
-     * @pram object $entity
+     * @param object $entity
      *
      * @return array
      */
@@ -36,6 +36,8 @@ interface ReferenceResolverInterface
 
     /**
      * Resolve reference from database format
+     *
+     * @param array $reference
      *
      * @return null|object
      */
