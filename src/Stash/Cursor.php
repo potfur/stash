@@ -14,35 +14,10 @@ namespace Stash;
 /**
  * Stash cursor decorator
  * Instead of plain arrays documents, returns entities
- * @method \MongoCursor addOption($key, $value)
- * @method \MongoCursor awaitData($wait = true)
- * @method \MongoCursor batchSize($batchSize)
- * @method int count($foundOnly = false)
- * @method bool dead()
- * @method array explain()
- * @method \MongoCursor fields(array $f)
- * @method array getNext()
- * @method array getReadPreference()
- * @method bool hasNext()
- * @method \MongoCursor hint($index)
- * @method \MongoCursor immortal($liveForever = true)
- * @method array info()
- * @method \MongoCursor limit($num)
- * @method \MongoCursor maxTimeMS($ms)
- * @method \MongoCursor partial($okay = true)
- * @method void reset()
- * @method \MongoCursor setFlag($flag, bool $set = true)
- * @method \MongoCursor setReadPreference($read_preference, array $tags = [])
- * @method \MongoCursor skip($num)
- * @method \MongoCursor slaveOkay($okay = true)
- * @method \MongoCursor snapshot()
- * @method \MongoCursor sort($fields)
- * @method \MongoCursor tailable($tail = true)
- * @method \MongoCursor timeout($ms)
  *
  * @package Stash
  */
-class Cursor implements \Iterator
+class Cursor implements \Iterator, \Countable
 {
     /**
      * @var \MongoCursor
@@ -111,15 +86,12 @@ class Cursor implements \Iterator
     }
 
     /**
-     * Transfer method call to internal MongoCursor instance and returns its result
+     * Count elements of an object
      *
-     * @param string $name
-     * @param array  $arguments
-     *
-     * @return mixed
+     * @return int
      */
-    public function __call($name, $arguments)
+    public function count()
     {
-        return call_user_func_array([$this->cursor, $name], $arguments);
+        return $this->cursor->count();
     }
 }

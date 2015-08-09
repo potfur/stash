@@ -293,6 +293,49 @@ class IntegrationTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($entityB->_id, $result->_id);
     }
 
+    public function testFindByIdReturnsSameInstanceForSameId()
+    {
+        $this->markTestSkipped();
+
+        $this->models->register(
+            new Model(
+                '\Fake\Foo',
+                [
+                    new Id(),
+                    new Reference('field'),
+                ],
+                'foo'
+            )
+        );
+
+        $foo = $this->connection->getCollection('foo');
+
+        $entity = new Foo(null, null);
+        $foo->save($entity);
+
+        $this->assertSame($foo->findById($entity->_id), $foo->findById($entity->_id));
+    }
+
+    public function testFindOneReturnsSameInstanceForSameId()
+    {
+        $this->markTestIncomplete();
+    }
+
+    public function testFindReturnsSameInstanceForSameId()
+    {
+        $this->markTestIncomplete();
+    }
+
+    public function testFindAndModifyWithoutNewFlagReturnsSameInstanceForSameId()
+    {
+        $this->markTestIncomplete();
+    }
+
+    public function testFindAndModifyWithNewFlagReturnsSameInstanceForSameId()
+    {
+        $this->markTestIncomplete();
+    }
+
     public function testRemoveByCriteria()
     {
         $this->mongo->selectDB('test')->selectCollection('foo')->insert(
