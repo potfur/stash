@@ -11,7 +11,6 @@
 
 namespace Stash;
 
-use Stash\Model\Model;
 use Stash\Model\ModelException;
 
 /**
@@ -54,7 +53,7 @@ class ModelCollection
     {
         $this->models[$model->getClass()] = $model;
 
-        if($model->getCollection() !== null) {
+        if ($model->getCollection() !== null) {
             $this->collections[$model->getCollection()] = &$this->models[$model->getClass()];
         }
     }

@@ -12,11 +12,16 @@
 namespace Stash;
 
 /**
- * Base exception class
+ * Class with event names
  *
  * @package Stash
  */
-class StashException extends \MongoException
+final class Events
 {
+    const FIND_AFTER = 'load.after';
 
+    const PERSIST_BEFORE = 'persist.before';
+    const PERSIST_AFTER = 'persist.after';
+
+    const REMOVE_BEFORE = 'remove.before';
 }

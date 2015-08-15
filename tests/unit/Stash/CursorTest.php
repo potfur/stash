@@ -12,6 +12,7 @@
 namespace Stash;
 
 use Fake\Foo;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 class CursorTest extends \PHPUnit_Framework_TestCase
 {
@@ -26,15 +27,17 @@ class CursorTest extends \PHPUnit_Framework_TestCase
     private $converter;
 
     /**
-     * @var ModelInterface|\PHPUnit_Framework_MockObject_MockObject
+     * @var EventDispatcherInterface|\PHPUnit_Framework_MockObject_MockObject
      */
-    private $model;
+    private $dispatcher;
 
     public function setUp()
     {
         $this->cursor = $this->getMockBuilder('\MongoCursor')->disableOriginalConstructor()->getMock();
+
         $this->converter = $this->getMock('\Stash\DocumentConverterInterface');
-        $this->model = $this->getMock('\Stash\ModelInterface');
+
+        $this->dispatcher = $this->getMock('\Symfony\Component\EventDispatcher\EventDispatcherInterface');
     }
 
     public function testIterator()
@@ -59,7 +62,12 @@ class CursorTest extends \PHPUnit_Framework_TestCase
             }
         );
 
-        $cursor = new Cursor($this->cursor, $this->converter, $this->model);
+        $this->dispatcher->expects($this->exactly(2))->method('dispatch')->withConsecutive(
+            [Events::FIND_AFTER, $this->isInstanceOf('\Stash\Event')],
+            [Events::FIND_AFTER, $this->isInstanceOf('\Stash\Event')]
+        );
+
+        $cursor = new Cursor($this->cursor, $this->converter, $this->dispatcher);
 
         $result = [];
         foreach ($cursor as $key => $value) {
@@ -74,11 +82,118 @@ class CursorTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($expected, $result);
     }
 
-    public function testCall()
+    public function testCount()
     {
-        $this->cursor->expects($this->once())->method('explain')->with();
+        $this->cursor->expects($this->once())->method('count')->willReturn(1);
 
-        $cursor = new Cursor($this->cursor, $this->converter, $this->model);
-        $cursor->explain();
+        $cursor = new Cursor($this->cursor, $this->converter, $this->dispatcher);
+        $result = $cursor->count();
+
+        $this->assertEquals(1, $result);
+    }
+
+    public function testLimit()
+    {
+        $this->cursor->expects($this->once())->method('limit')->with(10);
+
+        $cursor = new Cursor($this->cursor, $this->converter, $this->dispatcher);
+        $cursor->limit(10);
+    }
+
+    public function testSkip()
+    {
+        $this->cursor->expects($this->once())->method('skip')->with(10);
+
+        $cursor = new Cursor($this->cursor, $this->converter, $this->dispatcher);
+        $cursor->skip(10);
+    }
+
+    public function testSort()
+    {
+        $sorting = ['foo' => 1, 'bar' => -1];
+
+        $this->cursor->expects($this->once())->method('sort')->with($sorting);
+
+        $cursor = new Cursor($this->cursor, $this->converter, $this->dispatcher);
+        $cursor->sort($sorting);
+    }
+
+    public function testExplain()
+    {
+        $this->cursor->expects($this->once())->method('explain')->willReturn(['explain data']);
+
+        $cursor = new Cursor($this->cursor, $this->converter, $this->dispatcher);
+        $result = $cursor->explain();
+
+        $this->assertInternalType('array', $result);
+    }
+
+    public function testReadPreference()
+    {
+        $expected = [
+            'type' => 'secondary',
+            'tagsets' => [
+                0 => [
+                    'dc' => 'east',
+                    'use' => 'reporting',
+                ],
+                1 => [
+                    'dc' => 'west',
+                ],
+                2 => []
+            ]
+        ];
+
+        $readPreference = \MongoClient::RP_SECONDARY;
+        $readPreferenceArgs = [
+            ['dc' => 'east', 'use' => 'reporting'],
+            ['dc' => 'west'],
+            [],
+        ];
+
+        $this->cursor->expects($this->once())->method('setReadPreference')->with($readPreference, $readPreferenceArgs);
+        $this->cursor->expects($this->once())->method('getReadPreference')->willReturn($expected);
+
+        $cursor = new Cursor($this->cursor, $this->converter, $this->dispatcher);
+        $cursor->setReadPreference($readPreference, $readPreferenceArgs);
+
+        $result = $cursor->getReadPreference();
+        $this->assertEquals($expected, $result);
+    }
+
+    public function testInfo()
+    {
+        $this->cursor->expects($this->once())->method('info')->willReturn(['info data']);
+
+        $cursor = new Cursor($this->cursor, $this->converter, $this->dispatcher);
+        $result = $cursor->info();
+
+        $this->assertInternalType('array', $result);
+    }
+
+    public function testPartial()
+    {
+        $this->cursor->expects($this->once())->method('partial')->willReturn(true);
+
+        $cursor = new Cursor($this->cursor, $this->converter, $this->dispatcher);
+        $cursor->partial(true);
+    }
+
+    public function testDead()
+    {
+        $this->cursor->expects($this->once())->method('dead')->willReturn(false);
+
+        $cursor = new Cursor($this->cursor, $this->converter, $this->dispatcher);
+        $result = $cursor->dead();
+
+        $this->assertFalse($result);
+    }
+
+    public function testSnapshot()
+    {
+        $this->cursor->expects($this->once())->method('snapshot');
+
+        $cursor = new Cursor($this->cursor, $this->converter, $this->dispatcher);
+        $cursor->snapshot();
     }
 }

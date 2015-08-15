@@ -11,6 +11,8 @@
 
 namespace Stash;
 
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+
 /**
  * Mongo collection decorator
  * Works on entities instead of plain array documents
@@ -30,15 +32,22 @@ class Collection
     private $converter;
 
     /**
+     * @var EventDispatcherInterface
+     */
+    private $eventDispatcher;
+
+    /**
      * Constructor
      *
      * @param \MongoCollection           $collection
      * @param DocumentConverterInterface $converter
+     * @param EventDispatcherInterface   $eventDispatcher
      */
-    public function __construct(\MongoCollection $collection, DocumentConverterInterface $converter)
+    public function __construct(\MongoCollection $collection, DocumentConverterInterface $converter, EventDispatcherInterface $eventDispatcher)
     {
         $this->collection = $collection;
         $this->converter = $converter;
+        $this->eventDispatcher = $eventDispatcher;
     }
 
     /**
@@ -54,52 +63,69 @@ class Collection
     /**
      * Insert document
      *
-     * @param array|object $document
-     * @param array        $options
+     * @param object $document
+     * @param array  $options
      *
      * @return bool
      */
     public function insert($document, array $options = [])
     {
-        $raw = $this->convertDocument($document);
-        $result = $this->collection->insert($raw, $options);
-
-        return $this->updateDocument($document, $raw, $result);
+        return $this->persist([$this->collection, 'insert'], $document, $options);
     }
 
     /**
-     * Save (upsert) document
+     * Save document
      *
-     * @param array|object $document
-     * @param array        $options
+     * @param object $document
+     * @param array  $options
      *
      * @return bool
      */
     public function save($document, array $options = [])
     {
-        $raw = $this->convertDocument($document);
-        $result = $this->collection->save($raw, $options);
-
-        return $this->updateDocument($document, $raw, $result);
+        return $this->persist([$this->collection, 'save'], $document, $options);
     }
 
     /**
-     * Convert single document or array of documents to database values
+     * Persist entity using mongo collection call
      *
-     * @param array|object $document
+     * @param callable $call
+     * @param object   $document
+     * @param array    $options
      *
-     * @return array
+     * @return bool
      * @throws InvalidEntityException
      */
-    private function convertDocument($document)
+    private function persist(callable $call, $document, array $options)
     {
-        if (!is_object($document)) {
-            return $document;
+        $this->assertEntityInstance($document);
+
+        $this->eventDispatcher->dispatch(Events::PERSIST_BEFORE, new Event($document));
+        $raw = $this->converter->convertToDatabaseValue($document);
+        $result = $call($raw, $options);
+
+        if (!$this->isOk($result)) {
+            return false;
         }
 
-        $document = $this->converter->convertToDatabaseValue($document);
+        $this->setIdentifier($document, $raw);
+        $this->eventDispatcher->dispatch(Events::PERSIST_AFTER, new Event($document));
 
-        return $document;
+        return true;
+    }
+
+    /**
+     * Assert if passed document is an object
+     *
+     * @param mixed $document
+     *
+     * @throws InvalidEntityException
+     */
+    private function assertEntityInstance($document)
+    {
+        if (!is_object($document)) {
+            throw new InvalidEntityException(sprintf('Unable to persist got "%s" instead of entity instance', gettype($document)));
+        }
     }
 
     /**
@@ -115,26 +141,6 @@ class Collection
     }
 
     /**
-     * Update document with identifier if upsert was successful
-     *
-     * @param array|object $document
-     * @param array        $raw
-     * @param mixed        $result
-     *
-     * @return bool
-     */
-    private function updateDocument($document, array $raw, $result)
-    {
-        if ($this->isOk($result)) {
-            $this->setIdentifier($document, $raw);
-
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
      * Query collection and return a cursor for result set
      *
      * @param array $query
@@ -146,23 +152,7 @@ class Collection
     {
         $cursor = $this->collection->find($query, $fields);
 
-        return new Cursor($cursor, $this->converter);
-    }
-
-    /**
-     * Query collection and return first matching result
-     *
-     * @param array $query
-     * @param array $fields
-     * @param array $options
-     *
-     * @return null|object
-     */
-    public function findOne(array $query = [], array $fields = [], array $options = [])
-    {
-        $result = $this->collection->findOne($query, $fields, $options);
-
-        return $this->converter->convertToPHPValue($result);
+        return new Cursor($cursor, $this->converter, $this->eventDispatcher);
     }
 
     /**
@@ -179,6 +169,22 @@ class Collection
     }
 
     /**
+     * Query collection and return first matching result
+     *
+     * @param array $query
+     * @param array $fields
+     * @param array $options
+     *
+     * @return null|object
+     */
+    public function findOne(array $query = [], array $fields = [], array $options = [])
+    {
+        $result = $this->collection->findOne($query, $fields, $options);
+
+        return $this->createDocument($result);
+    }
+
+    /**
      * Update a document and return it
      *
      * @param array $query
@@ -192,7 +198,26 @@ class Collection
     {
         $result = $this->collection->findAndModify($query, $update, $fields, $options);
 
-        return $this->converter->convertToPHPValue($result);
+        return $this->createDocument($result);
+    }
+
+    /**
+     * Create entity from array
+     *
+     * @param null|array $document
+     *
+     * @return object
+     */
+    private function createDocument($document)
+    {
+        if (!$document) {
+            return null;
+        }
+
+        $entity = $this->converter->convertToPHPValue($document);
+        $this->eventDispatcher->dispatch(Events::FIND_AFTER, new Event($entity));
+
+        return $entity;
     }
 
     /**
@@ -282,10 +307,13 @@ class Collection
     public function remove($criteria = [], array $options = [])
     {
         if (is_object($criteria)) {
+            $this->eventDispatcher->dispatch(Events::REMOVE_BEFORE, new Event($criteria));
             $criteria = [Fields::KEY_ID => $this->getIdentifier($criteria)];
         }
 
-        return $this->collection->remove($criteria, $options);
+        $result = $this->collection->remove($criteria, $options);
+
+        return $result;
     }
 
     /**

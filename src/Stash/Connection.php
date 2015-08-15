@@ -11,6 +11,8 @@
 
 namespace Stash;
 
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+
 /**
  * Class representing connection to database
  *
@@ -39,15 +41,22 @@ class Connection
     private $buffer;
 
     /**
+     * @var EventDispatcherInterface
+     */
+    private $eventDispatcher;
+
+    /**
      * Constructor
      *
      * @param \MongoClient               $client
      * @param DocumentConverterInterface $converter
+     * @param EventDispatcherInterface   $eventDispatcher
      */
-    public function __construct(\MongoClient $client, DocumentConverterInterface $converter)
+    public function __construct(\MongoClient $client, DocumentConverterInterface $converter, EventDispatcherInterface $eventDispatcher)
     {
         $this->client = $client;
         $this->converter = $converter;
+        $this->eventDispatcher = $eventDispatcher;
 
         $this->converter->connect($this);
     }
@@ -77,7 +86,8 @@ class Connection
 
         return $this->buffer[$collection] = new Collection(
             $this->database->selectCollection($collection),
-            $this->converter
+            $this->converter,
+            $this->eventDispatcher
         );
     }
 }

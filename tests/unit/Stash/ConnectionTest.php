@@ -34,6 +34,11 @@ class ConnectionTest extends \PHPUnit_Framework_TestCase
      */
     private $converter;
 
+    /**
+     * @var EventDispatcherInterface|\PHPUnit_Framework_MockObject_MockObject
+     */
+    private $dispatcher;
+
     public function setUp()
     {
         $this->collection = $this->getMockBuilder('\MongoCollection')->disableOriginalConstructor()->getMock();
@@ -46,11 +51,13 @@ class ConnectionTest extends \PHPUnit_Framework_TestCase
         $this->client->expects($this->any())->method('selectDB')->willReturn($this->database);
 
         $this->converter = $this->getMock('\Stash\DocumentConverterInterface');
+
+        $this->dispatcher = $this->getMock('\Symfony\Component\EventDispatcher\EventDispatcherInterface');
     }
 
     public function testGetCollection()
     {
-        $connection = new Connection($this->client, $this->converter);
+        $connection = new Connection($this->client, $this->converter, $this->dispatcher);
         $connection->selectDB('test');
 
         $result = $connection->getCollection('test');
@@ -61,7 +68,7 @@ class ConnectionTest extends \PHPUnit_Framework_TestCase
 
     public function testGetBufferedCollection()
     {
-        $connection = new Connection($this->client, $this->converter);
+        $connection = new Connection($this->client, $this->converter, $this->dispatcher);
         $connection->selectDB('test');
 
         $resultA = $connection->getCollection('test');
