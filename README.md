@@ -17,7 +17,8 @@ The small, but important, difference here is that instead of returning plain arr
  - aggregation can return mapped objects - **done**
  - store datetime as UTC - **done**
  - ~~split document converter into separate read/write converters~~ converter uses lazy conversion **done**
- - event dispatcher
+ - event dispatcher **done**
+ - remove code duplications from document converter
  
 ## Example
 
