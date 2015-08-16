@@ -95,12 +95,23 @@ $types = [
     new \Stash\Converter\Type\DocumentType()
 ];
 
-$proxyAdapter = new \Stash\ProxyAdapter();
+$proxyAdapter = new \Stash\ProxyAdapter(new \ProxyManager\Factory\LazyLoadingValueHolderFactory());
 $converter = new \Stash\Converter\Converter($types);
 $referencer = new \Stash\ReferenceResolver($models);
 $documentConverter = new \Stash\DocumentConverter($converter, $referencer, $models, $proxyAdapter);
 
-$connection = new \Stash\Connection(new \MongoClient(), $models, $documentConverter);
+$subscriber = new \Fake\EventSubscriber(
+    [
+        \Stash\Events::FIND_AFTER,
+        \Stash\Events::PERSIST_BEFORE,
+        \Stash\Events::PERSIST_AFTER,
+        \Stash\Events::REMOVE_BEFORE
+    ]
+);
+$eventDispatcher = new \Symfony\Component\EventDispatcher\EventDispatcher();
+$eventDispatcher->addSubscriber($subscriber);
+
+$connection = new \Stash\Connection(new \MongoClient(), $documentConverter, $eventDispatcher);
 $connection->selectDB('test');
 ```
 
