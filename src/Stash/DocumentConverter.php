@@ -109,41 +109,14 @@ final class DocumentConverter implements DocumentConverterInterface
         $model = $this->models->getByInstance($document);
         $result = $this->converter->convertToDatabaseValue($document, Fields::TYPE_DOCUMENT);
 
-        foreach ($result as $fieldName => $value) {
-            if ($model->hasField($fieldName)) {
-                $field = $model->getField($fieldName);
-                $result[$fieldName] = $this->convertFieldToDatabaseValue($value, $field, $field->getType());
-            }
-
-            if ($value === null) {
-                unset($result[$fieldName]);
-            }
-        }
-
-        return $result;
-
-    }
-
-    /**
-     * Convert array elements to their database representation
-     *
-     * @param array          $array
-     * @param FieldInterface $field
-     *
-     * @return array
-     */
-    private function convertArrayToDatabaseValue(array $array, FieldInterface $field)
-    {
-        $array = $this->converter->convertToDatabaseValue($array, Fields::TYPE_ARRAY);
-
-        array_walk(
-            $array,
-            function (&$value) use ($field) {
-                $value = $this->convertFieldToDatabaseValue($value, $field, $field->getElementType());
+        $result = array_filter(
+            $this->convertDocument($result, [$this, 'convertFieldToDatabaseValue'], $model),
+            function ($value) {
+                return $value !== null;
             }
         );
 
-        return $array;
+        return $result;
     }
 
     /**
@@ -158,7 +131,8 @@ final class DocumentConverter implements DocumentConverterInterface
     private function convertFieldToDatabaseValue($value, FieldInterface $field, $type)
     {
         if ($type === Fields::TYPE_ARRAY) {
-            return $this->convertArrayToDatabaseValue($value, $field);
+            $value = $this->converter->convertToDatabaseValue($value, Fields::TYPE_ARRAY);
+            return $this->convertArray($value, [$this, __FUNCTION__], $field);
         }
 
         if ($type === Fields::TYPE_REFERENCE) {
@@ -229,37 +203,9 @@ final class DocumentConverter implements DocumentConverterInterface
     private function convertDocumentToPHPValue(array $document)
     {
         $model = $this->models->getByClass($document[Fields::KEY_CLASS]);
-
-        foreach ($document as $fieldName => $value) {
-            if ($model->hasField($fieldName)) {
-                $field = $model->getField($fieldName);
-                $document[$fieldName] = $this->convertFieldToPHPValue($value, $field, $field->getType());
-            }
-        }
+        $document = $this->convertDocument($document, [$this, 'convertFieldToPHPValue'], $model);
 
         return $this->converter->convertToPHPValue($document, Fields::TYPE_DOCUMENT);
-    }
-
-    /**
-     * Convert array of scalars to its PHP representation
-     *
-     * @param array          $array
-     * @param FieldInterface $field
-     *
-     * @return array
-     */
-    private function convertArrayToPHPValue(array $array, FieldInterface $field)
-    {
-        $array = $this->converter->convertToPHPValue($array, Fields::TYPE_ARRAY);
-
-        array_walk(
-            $array,
-            function (&$value) use ($field) {
-                $value = $this->convertFieldToPHPValue($value, $field, $field->getElementType());
-            }
-        );
-
-        return $array;
     }
 
     /**
@@ -274,7 +220,8 @@ final class DocumentConverter implements DocumentConverterInterface
     private function convertFieldToPHPValue($value, FieldInterface $field, $type)
     {
         if ($type === Fields::TYPE_ARRAY) {
-            return $this->convertArrayToPHPValue($value, $field);
+            $value = $this->converter->convertToPHPValue($value, Fields::TYPE_ARRAY);
+            return $this->convertArray($value, [$this, __FUNCTION__], $field);
         }
 
         if ($type === Fields::TYPE_REFERENCE) {
@@ -286,5 +233,50 @@ final class DocumentConverter implements DocumentConverterInterface
         }
 
         return $this->converter->convertToPHPValue($value, $type);
+    }
+
+    /**
+     * Convert document elements using method
+     *
+     * @param array          $document
+     * @param callable       $method
+     * @param ModelInterface $model
+     *
+     * @return array
+     */
+    private function convertDocument(array $document, callable $method, ModelInterface $model)
+    {
+        array_walk(
+            $document,
+            function (&$value, $fieldName) use ($method, $model) {
+                if ($model->hasField($fieldName)) {
+                    $field = $model->getField($fieldName);
+                    $value = $method($value, $field, $field->getType());
+                }
+            }
+        );
+
+        return $document;
+    }
+
+    /**
+     * Convert array using method
+     *
+     * @param array          $array
+     * @param callable       $method
+     * @param FieldInterface $field
+     *
+     * @return array
+     */
+    private function convertArray(array $array, callable $method, FieldInterface $field)
+    {
+        array_walk(
+            $array,
+            function (&$value) use ($method, $field) {
+                $value = $method($value, $field, $field->getElementType());
+            }
+        );
+
+        return $array;
     }
 }
