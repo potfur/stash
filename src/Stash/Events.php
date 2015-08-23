@@ -18,7 +18,7 @@ namespace Stash;
  */
 final class Events
 {
-    const FIND_AFTER = 'load.after';
+    const FIND_AFTER = 'find.after';
 
     const PERSIST_BEFORE = 'persist.before';
     const PERSIST_AFTER = 'persist.after';

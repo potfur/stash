@@ -11,15 +11,6 @@ It adds a fully transparent persistence layer while still preserving MongoDB's e
 This means that MongoDB can be used almost in the exact same way as it would be used with arrays.
 The small, but important, difference here is that instead of returning plain arrays, **Stash** will return objects (entities). And of course, **Stash** not only returns entities, but it also stores them.
 
-## Future Roadmap
-
- - references - **done**
- - aggregation can return mapped objects - **done**
- - store datetime as UTC - **done**
- - ~~split document converter into separate read/write converters~~ converter uses lazy conversion **done**
- - event dispatcher **done**
- - remove code duplications from document converter
- 
 ## Example
 
 Model definitions:
@@ -99,17 +90,7 @@ $proxyAdapter = new \Stash\ProxyAdapter(new \ProxyManager\Factory\LazyLoadingVal
 $converter = new \Stash\Converter\Converter($types);
 $referencer = new \Stash\ReferenceResolver($models);
 $documentConverter = new \Stash\DocumentConverter($converter, $referencer, $models, $proxyAdapter);
-
-$subscriber = new \Fake\EventSubscriber(
-    [
-        \Stash\Events::FIND_AFTER,
-        \Stash\Events::PERSIST_BEFORE,
-        \Stash\Events::PERSIST_AFTER,
-        \Stash\Events::REMOVE_BEFORE
-    ]
-);
 $eventDispatcher = new \Symfony\Component\EventDispatcher\EventDispatcher();
-$eventDispatcher->addSubscriber($subscriber);
 
 $connection = new \Stash\Connection(new \MongoClient(), $documentConverter, $eventDispatcher);
 $connection->selectDB('test');
@@ -226,11 +207,34 @@ When saving objects (entities), **Stash** adds the `_class` field, where it stor
 }                                                     
 ```
 
+## Event subscription
+
+*Stash* uses [Symfonys Event Dispatcher](http://symfony.com/doc/current/components/event_dispatcher/introduction.html) for dispatching events.
+
+ - `find.after` triggered after reading document from database and converting it to entity instance
+ - `persist.before` is triggered before converting entity to array document
+ - `persist.after` after document was saved (and updated with new `_id` if needed) 
+ - `remove.before` triggered before entity is removed from database
+ 
+Each event is represented with `Event` entity, similar to Symfony's `Event` but with two methods `getPayload` and `setPayload` to manage subject entity.  
+
+```php
+$subscriber = new \Fake\EventSubscriber(
+    [
+        \Stash\Events::FIND_AFTER,
+        \Stash\Events::PERSIST_BEFORE,
+        \Stash\Events::PERSIST_AFTER,
+        \Stash\Events::REMOVE_BEFORE
+    ]
+);
+$eventDispatcher->addSubscriber($subscriber);
+```
+
 ## Configuring proxy
 
 By default, all required proxy classes are generated at runtime.
-Generation uses a lot of reflection and it cause poor performance.
-To prevent this, generated proxy classes can be reused:
+Generation uses a lot of reflection and it may cause poor performance.
+To prevent this, proxy generator needs to be configured to reuse generated proxies.
 
 ```php
 $config = new \ProxyManager\Configuration();
