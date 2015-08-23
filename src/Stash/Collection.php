@@ -124,7 +124,7 @@ class Collection
     private function assertEntityInstance($document)
     {
         if (!is_object($document)) {
-            throw new InvalidEntityException(sprintf('Unable to persist got "%s" instead of entity instance', gettype($document)));
+            throw new InvalidEntityException(sprintf('Unable to persist, got "%s" instead of entity instance', gettype($document)));
         }
     }
 

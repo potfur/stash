@@ -52,6 +52,16 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('stdclass', $collection->getName());
     }
 
+    /**
+     * @expectedException \Stash\InvalidEntityException
+     * @expectedExceptionMessage Unable to persist, got "array" instead of entity instance
+     */
+    public function testInsertNonObject()
+    {
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
+        $collection->insert([]);
+    }
+
     public function testInsertFail()
     {
         $this->converter->expects($this->any())->method('convertToDatabaseValue')->willReturn(['field' => 'foo']);
@@ -73,6 +83,16 @@ class CollectionTest extends \PHPUnit_Framework_TestCase
 
         $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
         $collection->insert(new Foo(null, 'foo'), []);
+    }
+
+    /**
+     * @expectedException \Stash\InvalidEntityException
+     * @expectedExceptionMessage Unable to persist, got "array" instead of entity instance
+     */
+    public function testSaveNonObject()
+    {
+        $collection = new Collection($this->collection, $this->converter, $this->dispatcher);
+        $collection->save([]);
     }
 
     public function testSaveFail()
