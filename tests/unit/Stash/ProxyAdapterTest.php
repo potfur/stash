@@ -85,12 +85,11 @@ class ProxyAdapterTest extends \PHPUnit_Framework_TestCase
         $proxy->expects($this->any())->method('initializeProxy')->willReturn(true);
 
         $factory = $this->getMockBuilder('\ProxyManager\Factory\LazyLoadingValueHolderFactory')->disableOriginalConstructor()->getMock();
-        $factory->expects($this->once())->method('createProxy')->with($className, $initializer)->willReturn($proxy);
+        $factory->expects($this->once())->method('createProxy')->with($className, $this->isInstanceOf('\Closure'))->willReturn($proxy);
 
         $adapter = new ProxyAdapter($factory);
         $result = $adapter->createProxy($className, $initializer);
 
         $this->assertInstanceOf('\ProxyManager\Proxy\VirtualProxyInterface', $result);
-        $this->assertTrue($proxy->initializeProxy());
     }
 }
