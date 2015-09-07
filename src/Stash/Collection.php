@@ -237,7 +237,7 @@ class Collection
         }
 
         if ($className === null) {
-            return $result;
+            return $result['result'];
         }
 
         foreach ($result['result'] as &$document) {
