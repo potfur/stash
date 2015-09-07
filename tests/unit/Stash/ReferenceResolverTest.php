@@ -40,7 +40,7 @@ class ReferenceResolverTest extends \PHPUnit_Framework_TestCase
 
         $model = $this->getMock('\Stash\ModelInterface');
         $model->expects($this->any())->method('getCollection')->willReturn('stdclass');
-        $model->expects($this->any())->method('getClass')->willReturn('\Fake\Foo');
+        $model->expects($this->any())->method('getClass')->willReturn(\Fake\Foo::class);
 
         $this->models = $this->getMock('\Stash\ModelCollection');
         $this->models->expects($this->any())->method($this->anything())->willReturn($model);
@@ -113,7 +113,7 @@ class ReferenceResolverTest extends \PHPUnit_Framework_TestCase
 
         $result = $referencer->resolve(['$ref' => 'stdclass', '$id' => 1]);
 
-        $this->assertInstanceOf('\Fake\Foo', $result);
+        $this->assertInstanceOf(\Fake\Foo::class, $result);
         $this->assertEquals($entity->_id, $result->_id);
     }
 

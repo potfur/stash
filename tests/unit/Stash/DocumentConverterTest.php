@@ -75,12 +75,12 @@ class DocumentConverterTest extends \PHPUnit_Framework_TestCase
     public function testConvertEntityWithSimpleToDatabaseValue()
     {
         $entity = new Foo(null, 'foo');
-        $model = new Model('\Fake\Foo', [new Id(), new Scalar('field', Fields::TYPE_STRING)]);
+        $model = new Model(\Fake\Foo::class, [new Id(), new Scalar('field', Fields::TYPE_STRING)]);
         $this->models->register($model);
 
         $this->converter->expects($this->exactly(2))->method('convertToDatabaseValue')->willReturnMap(
             [
-                [$entity, Fields::TYPE_DOCUMENT, ['_class' => 'Fake\Foo', 'field' => 'foo']],
+                [$entity, Fields::TYPE_DOCUMENT, ['_class' => \Fake\Foo::class, 'field' => 'foo']],
                 ['foo', Fields::TYPE_STRING, 'foo']
             ]
         );
@@ -88,18 +88,18 @@ class DocumentConverterTest extends \PHPUnit_Framework_TestCase
         $converter = new DocumentConverter($this->converter, $this->referencer, $this->models, $this->proxyAdapter);
         $result = $converter->convertToDatabaseValue($entity);
 
-        $this->assertEquals(['_class' => 'Fake\Foo', 'field' => 'foo'], $result);
+        $this->assertEquals(['_class' => \Fake\Foo::class, 'field' => 'foo'], $result);
     }
 
     public function testConvertEntityWithArrayToDatabaseValue()
     {
         $entity = new Foo(null, [1]);
-        $model = new Model('\Fake\Foo', [new Id(), new ArrayOf('field', Fields::TYPE_INTEGER)]);
+        $model = new Model(\Fake\Foo::class, [new Id(), new ArrayOf('field', Fields::TYPE_INTEGER)]);
         $this->models->register($model);
 
         $this->converter->expects($this->exactly(3))->method('convertToDatabaseValue')->willReturnMap(
             [
-                [$entity, Fields::TYPE_DOCUMENT, ['_class' => 'Fake\Foo', 'field' => [1]]],
+                [$entity, Fields::TYPE_DOCUMENT, ['_class' => \Fake\Foo::class, 'field' => [1]]],
                 [[1], Fields::TYPE_ARRAY, [1]],
                 [1, Fields::TYPE_INTEGER, '1'],
             ]
@@ -108,14 +108,14 @@ class DocumentConverterTest extends \PHPUnit_Framework_TestCase
         $converter = new DocumentConverter($this->converter, $this->referencer, $this->models, $this->proxyAdapter);
         $result = $converter->convertToDatabaseValue($entity);
 
-        $this->assertEquals(['_class' => 'Fake\Foo', 'field' => ['1']], $result);
+        $this->assertEquals(['_class' => \Fake\Foo::class, 'field' => ['1']], $result);
     }
 
     public function testConvertEntityWithSubDocumentToDatabaseValue()
     {
         $subEntity = new \stdClass();
         $entity = new Foo(null, $subEntity);
-        $model = new Model('\Fake\Foo', [new Id(), new Document('field')]);
+        $model = new Model(\Fake\Foo::class, [new Id(), new Document('field')]);
         $this->models->register($model);
 
         $model = new Model('\stdClass', []);
@@ -123,7 +123,7 @@ class DocumentConverterTest extends \PHPUnit_Framework_TestCase
 
         $this->converter->expects($this->exactly(2))->method('convertToDatabaseValue')->willReturnMap(
             [
-                [$entity, Fields::TYPE_DOCUMENT, ['_class' => 'Fake\Foo', 'field' => $subEntity]],
+                [$entity, Fields::TYPE_DOCUMENT, ['_class' => \Fake\Foo::class, 'field' => $subEntity]],
                 [$subEntity, Fields::TYPE_DOCUMENT, ['_class' => 'stdClass']],
             ]
         );
@@ -131,18 +131,18 @@ class DocumentConverterTest extends \PHPUnit_Framework_TestCase
         $converter = new DocumentConverter($this->converter, $this->referencer, $this->models, $this->proxyAdapter);
         $result = $converter->convertToDatabaseValue($entity);
 
-        $this->assertEquals(['_class' => 'Fake\Foo', 'field' => ['_class' => 'stdClass']], $result);
+        $this->assertEquals(['_class' => \Fake\Foo::class, 'field' => ['_class' => 'stdClass']], $result);
     }
 
     public function testConvertEntityWithReferenceToDatabaseValue()
     {
         $entity = new Foo(null, null);
-        $model = new Model('\Fake\Foo', [new Id(), new Reference('field')]);
+        $model = new Model(\Fake\Foo::class, [new Id(), new Reference('field')]);
         $this->models->register($model);
 
         $this->converter->expects($this->once())->method('convertToDatabaseValue')->willReturnMap(
             [
-                [$entity, Fields::TYPE_DOCUMENT, ['_class' => 'Fake\Foo', 'field' => null]]
+                [$entity, Fields::TYPE_DOCUMENT, ['_class' => \Fake\Foo::class, 'field' => null]]
             ]
         );
 
@@ -151,26 +151,26 @@ class DocumentConverterTest extends \PHPUnit_Framework_TestCase
         $converter = new DocumentConverter($this->converter, $this->referencer, $this->models, $this->proxyAdapter);
         $result = $converter->convertToDatabaseValue($entity);
 
-        $this->assertEquals(['_class' => 'Fake\Foo'], $result);
+        $this->assertEquals(['_class' => \Fake\Foo::class], $result);
     }
 
     public function testConvertToPHPValue()
     {
         $entity = new Foo(null, 'foo');
-        $model = new Model('\Fake\Foo', [new Id(), new Scalar('field', Fields::TYPE_STRING)]);
+        $model = new Model(\Fake\Foo::class, [new Id(), new Scalar('field', Fields::TYPE_STRING)]);
         $this->models->register($model);
 
         $this->converter->expects($this->exactly(2))->method('convertToPHPValue')->willReturnMap(
             [
                 ['foo', Fields::TYPE_STRING, 'foo'],
-                [['_class' => 'Fake\Foo', 'field' => 'foo'], Fields::TYPE_DOCUMENT, $entity]
+                [['_class' => \Fake\Foo::class, 'field' => 'foo'], Fields::TYPE_DOCUMENT, $entity]
             ]
         );
 
         $this->proxyAdapter->expects($this->once())->method('createProxy')->willReturnCallback(function($className, callable $initializer) { return $initializer(); });
 
         $converter = new DocumentConverter($this->converter, $this->referencer, $this->models, $this->proxyAdapter);
-        $result = $converter->convertToPHPValue(['_class' => 'Fake\Foo', 'field' => 'foo']);
+        $result = $converter->convertToPHPValue(['_class' => \Fake\Foo::class, 'field' => 'foo']);
 
         $this->assertEquals($entity, $result);
     }
@@ -178,21 +178,21 @@ class DocumentConverterTest extends \PHPUnit_Framework_TestCase
     public function testConvertEntityWithArrayToPHPValue()
     {
         $entity = new Foo(null, [1]);
-        $model = new Model('\Fake\Foo', [new Id(), new ArrayOf('field', Fields::TYPE_INTEGER)]);
+        $model = new Model(\Fake\Foo::class, [new Id(), new ArrayOf('field', Fields::TYPE_INTEGER)]);
         $this->models->register($model);
 
         $this->converter->expects($this->exactly(3))->method('convertToPHPValue')->willReturnMap(
             [
                 [1, Fields::TYPE_INTEGER, 1],
                 [[1], Fields::TYPE_ARRAY, [1]],
-                [['_class' => 'Fake\Foo', 'field' => [1]], Fields::TYPE_DOCUMENT, $entity]
+                [['_class' => \Fake\Foo::class, 'field' => [1]], Fields::TYPE_DOCUMENT, $entity]
             ]
         );
 
         $this->proxyAdapter->expects($this->once())->method('createProxy')->willReturnCallback(function($className, callable $initializer) { return $initializer(); });
 
         $converter = new DocumentConverter($this->converter, $this->referencer, $this->models, $this->proxyAdapter);
-        $result = $converter->convertToPHPValue(['_class' => 'Fake\Foo', 'field' => [1]]);
+        $result = $converter->convertToPHPValue(['_class' => \Fake\Foo::class, 'field' => [1]]);
 
         $this->assertEquals($entity, $result);
     }
@@ -201,7 +201,7 @@ class DocumentConverterTest extends \PHPUnit_Framework_TestCase
     {
         $subEntity = new \stdClass();
         $entity = new Foo(null, $subEntity);
-        $model = new Model('\Fake\Foo', [new Id(), new Document('field')]);
+        $model = new Model(\Fake\Foo::class, [new Id(), new Document('field')]);
         $this->models->register($model);
 
         $model = new Model('\stdClass', []);
@@ -210,14 +210,14 @@ class DocumentConverterTest extends \PHPUnit_Framework_TestCase
         $this->converter->expects($this->exactly(2))->method('convertToPHPValue')->willReturnMap(
             [
                 [['_class' => 'stdClass'], Fields::TYPE_DOCUMENT, $subEntity],
-                [['_class' => 'Fake\Foo', 'field' => $subEntity], Fields::TYPE_DOCUMENT, $entity],
+                [['_class' => \Fake\Foo::class, 'field' => $subEntity], Fields::TYPE_DOCUMENT, $entity],
             ]
         );
 
         $this->proxyAdapter->expects($this->once())->method('createProxy')->willReturnCallback(function($className, callable $initializer) { return $initializer(); });
 
         $converter = new DocumentConverter($this->converter, $this->referencer, $this->models, $this->proxyAdapter);
-        $result = $converter->convertToPHPValue(['_class' => 'Fake\Foo', 'field' => ['_class' => 'stdClass']]);
+        $result = $converter->convertToPHPValue(['_class' => \Fake\Foo::class, 'field' => ['_class' => 'stdClass']]);
 
         $this->assertEquals($entity, $result);
     }
@@ -225,12 +225,12 @@ class DocumentConverterTest extends \PHPUnit_Framework_TestCase
     public function testConvertEntityWithReferenceToPHPValue()
     {
         $entity = new Foo(null, null);
-        $model = new Model('\Fake\Foo', [new Id(), new Reference('field')]);
+        $model = new Model(\Fake\Foo::class, [new Id(), new Reference('field')]);
         $this->models->register($model);
 
         $this->converter->expects($this->once())->method('convertToPHPValue')->willReturnMap(
             [
-                [['_class' => 'Fake\Foo', 'field' => null], Fields::TYPE_DOCUMENT, $entity]
+                [['_class' => \Fake\Foo::class, 'field' => null], Fields::TYPE_DOCUMENT, $entity]
             ]
         );
 
@@ -239,7 +239,7 @@ class DocumentConverterTest extends \PHPUnit_Framework_TestCase
         $this->proxyAdapter->expects($this->once())->method('createProxy')->willReturnCallback(function($className, callable $initializer) { return $initializer(); });
 
         $converter = new DocumentConverter($this->converter, $this->referencer, $this->models, $this->proxyAdapter);
-        $result = $converter->convertToPHPValue(['_class' => 'Fake\Foo', 'field' => null]);
+        $result = $converter->convertToPHPValue(['_class' => \Fake\Foo::class, 'field' => null]);
 
         $this->assertEquals($entity, $result);
     }
